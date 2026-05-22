@@ -4,20 +4,11 @@ import type { DriveStep } from 'driver.js';
 
 export const SPOTLIGHT_STEPS: DriveStep[] = [
   {
-    element: '[data-tour="natal-chart"]',
-    popover: {
-      title: 'NatalCompass',
-      description: 'Your sky at birth, in 3D. Hover planets and inspect aspects — the heart of Celestia',
-      side: 'right',
-      align: 'start',
-    },
-  },
-  {
     element: '[data-tour="sidebar-nav"]',
     popover: {
       title: 'Sidebar nav',
       description: 'Every feature lives here — your chart, tarot, rituals, and more',
-      side: 'bottom',
+      side: 'right',
       align: 'start',
     },
   },
@@ -27,7 +18,7 @@ export const SPOTLIGHT_STEPS: DriveStep[] = [
       title: 'Progression bar',
       description: 'Explore to earn XP. Leveling unlocks the Adept and Archon tools',
       side: 'bottom',
-      align: 'center',
+      align: 'start',
     },
   },
   {
@@ -35,7 +26,7 @@ export const SPOTLIGHT_STEPS: DriveStep[] = [
     popover: {
       title: 'Daily pulse',
       description: 'A fresh numerology focus for today — a new one every day',
-      side: 'top',
+      side: 'bottom',
       align: 'center',
     },
   },
@@ -44,6 +35,15 @@ export const SPOTLIGHT_STEPS: DriveStep[] = [
     popover: {
       title: 'Numerology cards',
       description: 'Life Path, Destiny, and today\'s active number. Tap any for the deep dive',
+      side: 'top',
+      align: 'center',
+    },
+  },
+  {
+    element: '[data-tour="natal-chart"]',
+    popover: {
+      title: 'NatalCompass',
+      description: 'Your sky at birth, in 3D. Hover planets and inspect aspects — the heart of Celestia',
       side: 'left',
       align: 'end',
     },
