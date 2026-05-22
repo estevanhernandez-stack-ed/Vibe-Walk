@@ -4,7 +4,7 @@
   "private": true,
   "description": "Vibe-Walk plugin scripts — anchor codemod (M4) and supporting toolchain",
   "scripts": {
-    "test:js": "node ./node_modules/jest-cli/bin/jest.js --testPathPattern=\"plugins/vibe-walk/scripts/anchors/__tests__/inject_anchors.test\" --forceExit",
+    "test:js": "node ./node_modules/jest-cli/bin/jest.js --forceExit",
     "test:py": "python -m pytest tests/ -q",
     "test": "npm run test:py && npm run test:js"
   },
@@ -15,6 +15,9 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "transform": {}
+    "transform": {},
+    "testMatch": [
+      "**/__tests__/**/*.test.js"
+    ]
   }
 }
