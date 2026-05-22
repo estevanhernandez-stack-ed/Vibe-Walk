@@ -1,0 +1,22 @@
+{
+  "name": "vibe-walk",
+  "version": "0.0.1",
+  "description": "Generate user onboarding for your app — but only when it earns one. Reads your UI surfaces, names the aha moment, and gives an honest verdict on whether a tour helps or hurts before it builds anything. When a tour is warranted, it generates a short, instrumented, replayable Driver.js spotlight tour with a human-gated anchor pass. Walkthrough mode for consumer apps; training mode comes later. Self-evolves via session + friction logging. No telemetry.",
+  "author": {
+    "name": "626Labs LLC",
+    "url": "https://github.com/estevanhernandez-stack-ed"
+  },
+  "homepage": "https://github.com/estevanhernandez-stack-ed/Vibe-Walk#readme",
+  "repository": "https://github.com/estevanhernandez-stack-ed/Vibe-Walk",
+  "license": "MIT",
+  "keywords": [
+    "vibe-walk",
+    "vibe-coding",
+    "onboarding",
+    "product-tour",
+    "spotlight-tour",
+    "user-activation",
+    "claude-code-plugin",
+    "626labs"
+  ]
+}
