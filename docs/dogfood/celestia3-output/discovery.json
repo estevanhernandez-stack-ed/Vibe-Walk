@@ -1,0 +1,492 @@
+{
+  "schema_version": 1,
+  "timestamp": "2026-05-22T11:48:17.365211+00:00",
+  "app_path": "C:\\Users\\estev\\Projects\\Celestia3",
+  "product_summary": "Celestia 3: a production-grade spiritual-technical platform bridging ancient esoteric wisdom with agentic AI. Includes 3D natal chart (NatalCompass), numerology tools, tarot, rituals, daily pulse, XP/level progression, synastry, celebrity charts, and Athanor AI oracle chat. Built on Next.js 15 + Firebase.",
+  "product_summary_raw_from_script": "<!-- gitnexus:start --> GitNexus \u2014 Code Intelligence",
+  "surfaces": [
+    {
+      "name": "App",
+      "file": "legacy/Intro/App.tsx",
+      "purpose": "3D Scene",
+      "view": "page"
+    },
+    {
+      "name": "CelestialBody",
+      "file": "legacy/Intro/components/CelestialBody.tsx",
+      "purpose": "Billboarded Label for better readability",
+      "view": "component"
+    },
+    {
+      "name": "CelestialScene",
+      "file": "legacy/Intro/components/CelestialScene.tsx",
+      "purpose": "Background stars",
+      "view": "component"
+    },
+    {
+      "name": "ConstellationField",
+      "file": "legacy/Intro/components/ConstellationField.tsx",
+      "purpose": "Stars",
+      "view": "component"
+    },
+    {
+      "name": "ZodiacWheel",
+      "file": "legacy/Intro/components/ZodiacWheel.tsx",
+      "purpose": "Outer Ring",
+      "view": "component"
+    },
+    {
+      "name": "TechnomancerGrimoire",
+      "file": "src/ai/TechnomancerGrimoire.ts",
+      "purpose": "Technomancer Grimoire",
+      "view": "root"
+    },
+    {
+      "name": "AccountModal",
+      "file": "src/components/AccountModal.tsx",
+      "purpose": "Danger zone \u2014 opt-in data deletion (we keep your data by default)",
+      "view": "component"
+    },
+    {
+      "name": "AdminView",
+      "file": "src/components/AdminView.tsx",
+      "purpose": "Admin Header",
+      "view": "page"
+    },
+    {
+      "name": "AethericThoughtStream",
+      "file": "src/components/AethericThoughtStream.tsx",
+      "purpose": "Aetheric Thought Stream",
+      "view": "component"
+    },
+    {
+      "name": "AgentManifestChart",
+      "file": "src/components/AgentManifestChart.tsx",
+      "purpose": "Scanned Line Animation",
+      "view": "component"
+    },
+    {
+      "name": "AstrologyIcons",
+      "file": "src/components/AstrologyIcons.tsx",
+      "purpose": "Simplified '4' glyph alternative:",
+      "view": "component"
+    },
+    {
+      "name": "AthanorChatBar",
+      "file": "src/components/AthanorChatBar.tsx",
+      "purpose": "Floating Button",
+      "view": "component"
+    },
+    {
+      "name": "AtmosphereController",
+      "file": "src/components/AtmosphereController.tsx",
+      "purpose": "Atmosphere Controller",
+      "view": "component"
+    },
+    {
+      "name": "AuraScanner",
+      "file": "src/components/AuraScanner.tsx",
+      "purpose": "Header",
+      "view": "component"
+    },
+    {
+      "name": "BiWheelCompass",
+      "file": "src/components/BiWheelCompass.tsx",
+      "purpose": "Rings",
+      "view": "component"
+    },
+    {
+      "name": "CelebrityMatchView",
+      "file": "src/components/CelebrityMatchView.tsx",
+      "purpose": "Left: Celebrity List",
+      "view": "page"
+    },
+    {
+      "name": "ChatInterface",
+      "file": "src/components/ChatInterface.tsx",
+      "purpose": "Modals",
+      "view": "component"
+    },
+    {
+      "name": "CosmicCalibration",
+      "file": "src/components/CosmicCalibration.tsx",
+      "purpose": "Header",
+      "view": "component"
+    },
+    {
+      "name": "CosmicInsightPanel",
+      "file": "src/components/CosmicInsightPanel.tsx",
+      "purpose": "Header",
+      "view": "component"
+    },
+    {
+      "name": "DashboardShell",
+      "file": "src/components/DashboardShell.tsx",
+      "purpose": "COMPONENTS ARE CURRENTLY DISABLED FOR DEBUGGING",
+      "view": "component"
+    },
+    {
+      "name": "DeepDiveView",
+      "file": "src/components/DeepDiveView.tsx",
+      "purpose": "Example Inquiry Chips",
+      "view": "page"
+    },
+    {
+      "name": "FeatureDetailModal",
+      "file": "src/components/FeatureDetailModal.tsx",
+      "purpose": "Backdrop",
+      "view": "component"
+    },
+    {
+      "name": "GrimoireCodex",
+      "file": "src/components/GrimoireCodex.tsx",
+      "purpose": "Header",
+      "view": "component"
+    },
+    {
+      "name": "GrimoireView",
+      "file": "src/components/GrimoireView.tsx",
+      "purpose": "Header",
+      "view": "page"
+    },
+    {
+      "name": "ManageSubscription",
+      "file": "src/components/ManageSubscription.tsx",
+      "purpose": "Cancellation Warning & Controls",
+      "view": "component"
+    },
+    {
+      "name": "NatalCompass",
+      "file": "src/components/NatalCompass.tsx",
+      "purpose": "1. Background Layers (Static UI, Decorative SVG)",
+      "view": "component"
+    },
+    {
+      "name": "NumerologyDetailModal",
+      "file": "src/components/NumerologyDetailModal.tsx",
+      "purpose": "Header",
+      "view": "component"
+    },
+    {
+      "name": "NumerologyView",
+      "file": "src/components/NumerologyView.tsx",
+      "purpose": "Header",
+      "view": "page"
+    },
+    {
+      "name": "PaywallGate",
+      "file": "src/components/PaywallGate.tsx",
+      "purpose": "Blurred background preview of what they're missing",
+      "view": "component"
+    },
+    {
+      "name": "PlanetOrb",
+      "file": "src/components/PlanetOrb.tsx",
+      "purpose": "Soft Ambient Glow / Halo",
+      "view": "component"
+    },
+    {
+      "name": "ReportIssueView",
+      "file": "src/components/ReportIssueView.tsx",
+      "purpose": "Type selector",
+      "view": "page"
+    },
+    {
+      "name": "RitualControlPanel",
+      "file": "src/components/RitualControlPanel.tsx",
+      "purpose": "Decorative Elements",
+      "view": "component"
+    },
+    {
+      "name": "RitualVision",
+      "file": "src/components/RitualVision.tsx",
+      "purpose": "Animated Grid Background",
+      "view": "component"
+    },
+    {
+      "name": "SynastryView",
+      "file": "src/components/SynastryView.tsx",
+      "purpose": "Input Form",
+      "view": "page"
+    },
+    {
+      "name": "TarotDeck",
+      "file": "src/components/TarotDeck.tsx",
+      "purpose": "Physical Deck Notice",
+      "view": "component"
+    },
+    {
+      "name": "TarotExplorer",
+      "file": "src/components/TarotExplorer.tsx",
+      "purpose": "Filters",
+      "view": "component"
+    },
+    {
+      "name": "TarotSpread",
+      "file": "src/components/TarotSpread.tsx",
+      "purpose": "AI Interpretation Panel",
+      "view": "component"
+    },
+    {
+      "name": "TransitFeed",
+      "file": "src/components/TransitFeed.tsx",
+      "purpose": "Info Toggle",
+      "view": "component"
+    },
+    {
+      "name": "UpgradeModal",
+      "file": "src/components/UpgradeModal.tsx",
+      "purpose": "Header",
+      "view": "component"
+    },
+    {
+      "name": "UsageMeter",
+      "file": "src/components/UsageMeter.tsx",
+      "purpose": "Usage Meter",
+      "view": "component"
+    },
+    {
+      "name": "WelcomeModal",
+      "file": "src/components/WelcomeModal.tsx",
+      "purpose": "Hero Section",
+      "view": "component"
+    },
+    {
+      "name": "OnboardingExperience",
+      "file": "src/components/onboarding/OnboardingExperience.tsx",
+      "purpose": "3D Scene",
+      "view": "component"
+    },
+    {
+      "name": "CelebrityService",
+      "file": "src/lib/CelebrityService.ts",
+      "purpose": "Fetches a precomputed natal chart for a celebrity from Firestore.",
+      "view": "root"
+    },
+    {
+      "name": "ChatService",
+      "file": "src/lib/ChatService.ts",
+      "purpose": "Chat Service",
+      "view": "root"
+    },
+    {
+      "name": "ConfigService",
+      "file": "src/lib/ConfigService.ts",
+      "purpose": "Retrieves a prompt by ID. Falls back to hardcoded defaults if not in Firestore.",
+      "view": "root"
+    },
+    {
+      "name": "FeedbackService",
+      "file": "src/lib/FeedbackService.ts",
+      "purpose": "Feedback Service",
+      "view": "root"
+    },
+    {
+      "name": "GeocodingService",
+      "file": "src/lib/GeocodingService.ts",
+      "purpose": "Searches for a location and returns top matches.",
+      "view": "root"
+    },
+    {
+      "name": "GrimoireService",
+      "file": "src/lib/GrimoireService.ts",
+      "purpose": "Grimoire Service",
+      "view": "root"
+    },
+    {
+      "name": "KnowledgeBaseData",
+      "file": "src/lib/KnowledgeBaseData.ts",
+      "purpose": "Knowledge Base Data",
+      "view": "root"
+    },
+    {
+      "name": "KnowledgeService",
+      "file": "src/lib/KnowledgeService.ts",
+      "purpose": "Formats all knowledge categories into a single context string for the AI.",
+      "view": "root"
+    },
+    {
+      "name": "MagicalTexts",
+      "file": "src/lib/MagicalTexts.ts",
+      "purpose": "Magical Texts",
+      "view": "root"
+    },
+    {
+      "name": "OnboardingService",
+      "file": "src/lib/OnboardingService.ts",
+      "purpose": "Onboarding Service",
+      "view": "root"
+    },
+    {
+      "name": "PersistenceService",
+      "file": "src/lib/PersistenceService.ts",
+      "purpose": "Persistence Service",
+      "view": "root"
+    },
+    {
+      "name": "ProgressionService",
+      "file": "src/lib/ProgressionService.ts",
+      "purpose": "Processes XP gain and returns the new state",
+      "view": "root"
+    },
+    {
+      "name": "ResonanceService",
+      "file": "src/lib/ResonanceService.ts",
+      "purpose": "Aetheric Resonance Generator",
+      "view": "root"
+    },
+    {
+      "name": "RitualService",
+      "file": "src/lib/RitualService.ts",
+      "purpose": "Ritual Service",
+      "view": "root"
+    },
+    {
+      "name": "SearchService",
+      "file": "src/lib/SearchService.ts",
+      "purpose": "Celestial Search Service",
+      "view": "root"
+    },
+    {
+      "name": "SpotifyService",
+      "file": "src/lib/SpotifyService.ts",
+      "purpose": "Spotify Resonance Service",
+      "view": "root"
+    },
+    {
+      "name": "SubscriptionService",
+      "file": "src/lib/SubscriptionService.ts",
+      "purpose": "Subscription Service",
+      "view": "root"
+    },
+    {
+      "name": "SwissEphemerisService",
+      "file": "src/lib/SwissEphemerisService.ts",
+      "purpose": "Swiss Ephemeris Service",
+      "view": "root"
+    },
+    {
+      "name": "UserProfileService",
+      "file": "src/lib/UserProfileService.ts",
+      "purpose": "Save user preferences to Firestore and localStorage",
+      "view": "root"
+    },
+    {
+      "name": "VoiceService",
+      "file": "src/lib/VoiceService.ts",
+      "purpose": "Voice Service - Celestia 3",
+      "view": "root"
+    },
+    {
+      "name": "AspectEngine",
+      "file": "src/utils/AspectEngine.ts",
+      "purpose": "Calculates all aspects between a set of planets.",
+      "view": "root"
+    },
+    {
+      "name": "CelestialLogic",
+      "file": "src/utils/CelestialLogic.ts",
+      "purpose": "Celestial Logic",
+      "view": "root"
+    },
+    {
+      "name": "NumerologyEngine",
+      "file": "src/utils/NumerologyEngine.ts",
+      "purpose": "Numerology Engine",
+      "view": "root"
+    }
+  ],
+  "interactive_surface_count": 36,
+  "anchor_readiness": {
+    "readiness": "needs-pass",
+    "risk_flags": [
+      "dynamic_mount",
+      "ssr_risk"
+    ],
+    "_meta": {
+      "files_with_stable": 7,
+      "files_without_stable": 110,
+      "total_stable_attrs": 36,
+      "source_files_scanned": 117
+    }
+  },
+  "ranked_shortlist": [
+    {
+      "name": "DashboardShell",
+      "file": "src/components/DashboardShell.tsx",
+      "rank": 1,
+      "rank_reason": "Primary container \u2014 hosts all home-view surfaces",
+      "view": "component"
+    },
+    {
+      "name": "NatalCompass",
+      "file": "src/components/NatalCompass.tsx",
+      "rank": 2,
+      "rank_reason": "Aha moment \u2014 3D birth chart is the emotional payoff",
+      "view": "component"
+    },
+    {
+      "name": "AthanorChatBar",
+      "file": "src/components/AthanorChatBar.tsx",
+      "rank": 3,
+      "rank_reason": "AI oracle \u2014 primary help escape hatch",
+      "view": "component"
+    },
+    {
+      "name": "WelcomeModal",
+      "file": "src/components/WelcomeModal.tsx",
+      "rank": 4,
+      "rank_reason": "Existing first-run modal \u2014 tour should queue after it",
+      "view": "component"
+    },
+    {
+      "name": "TransitFeed",
+      "file": "src/components/TransitFeed.tsx",
+      "rank": 5,
+      "rank_reason": "Daily transit data \u2014 engagement signal",
+      "view": "component"
+    },
+    {
+      "name": "TarotDeck",
+      "file": "src/components/TarotDeck.tsx",
+      "rank": 6,
+      "rank_reason": "Secondary feature \u2014 discoverable after aha",
+      "view": "component"
+    },
+    {
+      "name": "OnboardingExperience",
+      "file": "src/components/onboarding/OnboardingExperience.tsx",
+      "rank": 7,
+      "rank_reason": "Existing onboarding (flyby) \u2014 not a tour stop, context only",
+      "view": "component"
+    },
+    {
+      "name": "PaywallGate",
+      "file": "src/components/PaywallGate.tsx",
+      "rank": 8,
+      "rank_reason": "Paywall \u2014 relevant if freemium, not a tour stop",
+      "view": "component"
+    }
+  ],
+  "aha_moment": {
+    "surface": "NatalCompass",
+    "reason": "The 3D birth chart (NatalCompass) is the payoff of a birth-data-first astrology app \u2014 a new user sees their personal sky, which no other feature delivers on first load."
+  },
+  "verdict": "don't-build",
+  "verdict_reasons": [
+    "Comprehensive onboarding already exists \u2014 stacking a tour on top trains a dismiss reflex without adding real value."
+  ],
+  "signals_used": {
+    "interactive_surface_count": 36,
+    "audience": "b2c",
+    "existing_onboarding": true,
+    "app_category": "web_app",
+    "anchor_readiness": "needs-pass",
+    "no_stable_selectors": false,
+    "anchor_pass_refused": false,
+    "first_run_is_blank_canvas": false,
+    "high_urgency": false,
+    "untourable_surface_ratio": 0.0
+  },
+  "note": "CORRECTED RUN: existing_onboarding=True correctly \u2014 OnboardingExperience flyby + WelcomeModal DO exist. Verdict=don-t-build is WRONG. See dogfood report for the bug."
+}

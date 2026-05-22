@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "app_path": "C:\\Users\\estev\\Projects\\Celestia3",
+  "mode": "walkthrough",
+  "trigger_model": "auto-once-replay",
+  "first_login_overlays": [
+    "WelcomeModal",
+    "OnboardingExperience flyby"
+  ],
+  "substrate": "driver.js",
+  "anchor_attr": "data-tour",
+  "substrate_reason": "Default driver.js path (no override conditions fired for single-route tour)",
+  "substrate_overridden": false,
+  "driver_js_version": null,
+  "aha_moment": {
+    "surface": "NatalCompass",
+    "reason": "3D natal chart \u2014 emotional payoff of a birth-based astrology app"
+  },
+  "primary_user_role": "single",
+  "two_tour_branching": false,
+  "audience": "b2c",
+  "ranked_shortlist": [
+    {
+      "name": "sidebar-nav",
+      "anchor": "sidebar-nav",
+      "rank": 1,
+      "purpose": "Every feature lives here \u2014 your chart, tarot, rituals, and more.",
+      "rank_reason": "Primary navigation \u2014 orients user to whole app"
+    },
+    {
+      "name": "progression-bar",
+      "anchor": "progression-bar",
+      "rank": 2,
+      "purpose": "Explore to earn XP. Leveling unlocks the Adept and Archon tools.",
+      "rank_reason": "Retention mechanic \u2014 new users need to know XP exists"
+    },
+    {
+      "name": "daily-pulse",
+      "anchor": "daily-pulse",
+      "rank": 3,
+      "purpose": "A fresh numerology focus for today \u2014 a new one every day.",
+      "rank_reason": "Daily engagement hook \u2014 drives return visits"
+    },
+    {
+      "name": "numerology-cards",
+      "anchor": "numerology-cards",
+      "rank": 4,
+      "purpose": "Life Path, Destiny, and today's active number. Tap any for the deep dive.",
+      "rank_reason": "Core personalized feature visible on first load"
+    },
+    {
+      "name": "NatalCompass",
+      "anchor": "natal-chart",
+      "rank": 5,
+      "purpose": "Your sky at birth, in 3D. Hover planets and inspect aspects \u2014 the heart of Celestia.",
+      "rank_reason": "Aha moment \u2014 emotional payoff"
+    },
+    {
+      "name": "athanor-chat",
+      "anchor": "athanor-chat",
+      "rank": 6,
+      "purpose": "Stuck? Your agentic oracle can answer questions and run the tools for you.",
+      "rank_reason": "AI escape hatch \u2014 surfaces help when confused"
+    }
+  ],
+  "anchor_readiness": {
+    "readiness": "needs-pass",
+    "risk_flags": [
+      "dynamic_mount",
+      "ssr_risk"
+    ]
+  }
+}
