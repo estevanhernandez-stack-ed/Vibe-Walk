@@ -1,6 +1,6 @@
 ---
-name: vibe-walk:walk
-description: "Phase 1.5 interview gates + Phase 2 tour generator for vibe-walk. Reads .vibe-walk/discovery.json, resolves the tour substrate via the decision tree (substrate_tree.py), runs five interview gates, writes .vibe-walk/build-plan.json, then invokes emit_tour_module (M3) to emit the Driver.js drop-in tour module."
+name: walk
+description: "Phase 1.5 interview gates + Phase 2 tour generator for vibe-walk. Reads .vibe-walk/discovery.json, resolves the tour substrate via the decision tree (substrate_tree.py), runs five interview gates, writes .vibe-walk/build-plan.json, then orchestrates three Phase 2 steps: anchor injection (M4), tour module emission (M3), and analytics wiring (M5)."
 ---
 
 # /vibe-walk:walk — Phase 1.5 interview gates + Phase 2 tour generator
@@ -11,7 +11,7 @@ Read [`../guide/SKILL.md`](../guide/SKILL.md) for the Sherpa persona, posture, a
 
 Phase 1.5 is the interview between discovery and build. Five gates. The substrate decision tree runs before any question is asked — never ask what the tree already answers. Ask only to confirm the tree's resolution or to resolve an explicit override condition.
 
-At the end of the five gates, the resolved answers land in `.vibe-walk/build-plan.json`. **Phase 2 (M3) is now built** — after writing the build plan, invoke `emit_tour_module.emit_module(build_plan)` to emit the Driver.js drop-in tour module (spotlightSteps.ts + spotlightTour.ts). Write the emitted files to the app's tour directory (e.g., `src/components/tour/`). Surface any warnings from the emitter (e.g., the D1 5-step cap split recommendation) before presenting the hand-off message.
+At the end of the five gates, the resolved answers land in `.vibe-walk/build-plan.json`. **Phase 2 runs three steps in sequence:** anchor injection (M4) → tour module emission (M3) → analytics wiring (M5). There is one human gate between step 1 and step 2: if the anchor codemod routes any stop to `REVIEW_NEEDED.md`, the build halts there until the builder resolves that list. Steps 2 and 3 run without further interruption once the anchor pass is clean.
 
 ```
 read discovery.json
@@ -22,10 +22,15 @@ read discovery.json
     → Gate 4: Aha moment — confirm M1 candidate
     → Gate 5: Primary user role
       → write build-plan.json
-        → invoke emit_tour_module.emit_module(build_plan)
-          → write emitted files to app tour directory
-            → surface warnings (D1 cap, etc.)
-              → hand off (Phase 2 complete — M3 built)
+        → Phase 2, step 1: inject_anchors.js (M4)
+            → if REVIEW_NEEDED entries exist → write REVIEW_NEEDED.md → HALT
+            → if anchor pass is clean → continue
+        → Phase 2, step 2: emit_tour_module.emit_module(build_plan) (M3)
+            → write spotlightSteps.ts + spotlightTour.ts to app tour directory
+            → surface D1 cap warnings
+        → Phase 2, step 3: emit_analytics.emit_analytics(build_plan) (M5)
+            → write tourAnalytics.ts + TOUR_ANALYTICS.md to app tour directory
+              → hand off (Phase 2 complete)
 ```
 
 ## Prerequisites
@@ -319,9 +324,46 @@ Write to `.vibe-walk/build-plan.json` (create `.vibe-walk/` if absent):
 }
 ```
 
-### 7. Invoke Phase 2 (emit_tour_module)
+### 7. Invoke Phase 2
 
-After writing the build plan, call the Phase 2 generator:
+Phase 2 runs three steps in the fixed order below. **Do not skip or reorder.**
+
+#### Step 1 — Anchor injection (M4)
+
+Build an `anchorPlan` from the ranked shortlist: one entry per stop, mapping each stop's component file path to its `data-tour` anchor name (derived from the stop's kebab-cased surface name). Run `inject_anchors.js` as a jscodeshift transform via the CLI:
+
+```bash
+node_modules/.bin/jscodeshift \
+  -t plugins/vibe-walk/scripts/anchors/inject_anchors.js \
+  --parser tsx \
+  --plan='<JSON.stringify(anchorPlan)>' \
+  <component_file_paths...>
+```
+
+Collect any `_lastReviewEntries` produced by the transform. If there are review entries — components the codemod could not safely auto-inject — call `emitReviewNeededMd(entries, path.join(app_path, 'REVIEW_NEEDED.md'))` to write the file, then **HALT** with the message below. Do not proceed to step 2.
+
+**HALT message (fires when REVIEW_NEEDED entries exist):**
+
+```
+Anchor injection: <N_clean> of <N_total> stops auto-injected. <N_review> require human review.
+
+REVIEW_NEEDED.md written to <app_path>/REVIEW_NEEDED.md.
+
+The build is paused. Resolve every item in that file before continuing:
+  — For each item, either add data-tour="<anchor-name>" to the correct element manually,
+    or document why the stop should be removed from the tour plan.
+
+When every item is resolved, re-run /vibe-walk:walk. The gates will not re-run;
+the build will resume from the anchor pass with the updated file state.
+```
+
+If the anchor pass is fully clean (zero review entries, all stops auto-injected), surface a brief confirmation and continue to step 2 immediately.
+
+```
+Anchor injection: all <N> stops auto-injected cleanly. Continuing to module emission.
+```
+
+#### Step 2 — Emit tour module (M3)
 
 ```python
 from build.emit_tour_module import emit_module
@@ -329,7 +371,7 @@ result = emit_module(build_plan)  # build_plan is the dict written to build-plan
 
 # Surface any warnings (D1 cap, split recommendation, etc.)
 for w in result["warnings"]:
-    print(f"  ⚠  {w}")
+    print(f"  {w}")
 
 # Write emitted files to the app's tour directory
 # Default target: src/components/tour/ (or equivalent for the app's structure)
@@ -337,11 +379,30 @@ for rel_path, contents in result["files"].items():
     write_to_app_tour_dir(app_path, rel_path, contents)
 ```
 
+Surface any D1 cap warnings to the builder before moving to step 3.
+
+#### Step 3 — Wire analytics (M5)
+
+```python
+from build.emit_analytics import emit_analytics
+analytics_result = emit_analytics(build_plan)
+
+for w in analytics_result["warnings"]:
+    print(f"  {w}")
+
+for rel_path, contents in analytics_result["files"].items():
+    write_to_app_tour_dir(app_path, rel_path, contents)
+```
+
+Merges into the same tour directory as step 2. `tourAnalytics.ts` is designed to import cleanly alongside `spotlightTour.ts` — the wiring guide in `TOUR_ANALYTICS.md` covers the integration.
+
 ### 8. Hand-off message
 
 ```
-Build plan written to .vibe-walk/build-plan.json.
-Tour module emitted to src/components/tour/.
+Build complete.
+
+Build plan:   .vibe-walk/build-plan.json
+Tour dir:     src/components/tour/
 
 Resolved:
   Mode:       walkthrough (v1)
@@ -352,16 +413,18 @@ Resolved:
   Steps:      <N> of <original_count> (D1 cap: 5 max)
 
 Files written:
-  spotlightSteps.ts — <N>-stop DriveStep[] array, data-tour anchors
-  spotlightTour.ts  — driver() runner, showProgress, SSR guard, replay export
+  spotlightSteps.ts  — <N>-stop DriveStep[] array, data-tour anchors
+  spotlightTour.ts   — driver() runner, showProgress, SSR guard, replay export
+  tourAnalytics.ts   — 6-event analytics adapter (replace the stub with your provider)
+  TOUR_ANALYTICS.md  — event schema, attribution windows, wiring guide
 
 <if warnings>
 Notes:
   <warnings listed here>
 </if>
 
-Next: wire the data-tour anchors (M4 anchor-injection pass) and the analytics
-hooks (M5). Both are pending. Run /vibe-walk:walk again after M4 is built.
+Next: open TOUR_ANALYTICS.md and replace the trackTourEvent stub with your
+analytics provider call. That's the only remaining wiring step.
 ```
 
 ### 9. Friction-logger triggers summary
@@ -372,7 +435,7 @@ For `/vibe-walk:walk`, fire `friction-logger.log()` when:
 |---|---|---|
 | Builder changes the substrate after tree resolved one | `default_overridden` | `low` |
 | Builder asks for more than 5 steps at any point | `guardrail_pushed` | `medium` — capture requested count |
-| A REVIEW_NEEDED anchor item (future M4) is declared "can't anchor this" | `anchor_unresolvable` | `high` |
+| A REVIEW_NEEDED anchor item is declared "can't anchor this" (stop removed from plan) | `anchor_unresolvable` | `high` |
 
 ### 10. Session end
 
@@ -383,8 +446,8 @@ Invoke `session-logger.end()` with:
 - `key_decisions`: `["substrate: <X>", "trigger: <Y>", "aha: <surface>", "role: <Z>"]`
 - `user_pushback`: `true` if the builder overrode the substrate or aha candidate
 - `friction_notes`: array of any friction signals captured this run
-- `tour_built`: `true` (M3 built — emit_tour_module invoked)
-- `anchor_review_needed`: `null` (M4 not yet built)
+- `tour_built`: `true` (Phase 2 complete — anchors injected, module emitted, analytics wired)
+- `anchor_review_needed`: `true` if the build halted at REVIEW_NEEDED, `false` if fully clean
 
 ## Hard rules
 
@@ -392,14 +455,18 @@ Invoke `session-logger.end()` with:
 - **Never ask multiple gates at once.** Keep them sequential. Gate 2's sub-question is the only in-gate compound — and it fires immediately after Gate 2's main question.
 - **Intro.js is not available.** Reject any attempt to select it with a clear reason (AGPL-3).
 - **Shadow DOM stops → untourable.** No substrate work-arounds this. Present the options and let the builder decide.
-- **The build plan is authoritative.** Phase 2 (M3) reads it. Write it completely before invoking emit_tour_module.
+- **The build plan is authoritative.** All three Phase 2 steps read from it. Write it completely before invoking any Phase 2 step.
+- **REVIEW_NEEDED halts the build.** Never proceed to step 2 (module emission) if step 1 (anchor injection) produced any review entries. The halt is the contract.
 - **D1 is enforced by the emitter.** If emit_module returns warnings, surface them to the builder before presenting the hand-off.
+- **Phase 2 order is fixed: anchors → module → analytics.** Never reorder. Never skip. Analytics (M5) runs unconditionally after module emission — it completes in the same session.
 
 ## Cross-references
 
 - Guide (Sherpa persona + posture): [`../guide/SKILL.md`](../guide/SKILL.md)
 - Substrate decision tree: `../../scripts/build/substrate_tree.py`
-- Phase 2 emitter: `../../scripts/build/emit_tour_module.py` (M3 — built)
+- Anchor codemod: `../../scripts/anchors/inject_anchors.js` (M4)
+- Tour module emitter: `../../scripts/build/emit_tour_module.py` (M3)
+- Analytics emitter: `../../scripts/build/emit_analytics.py` (M5)
 - Session logger: [`../session-logger/SKILL.md`](../session-logger/SKILL.md)
 - Friction logger: [`../friction-logger/SKILL.md`](../friction-logger/SKILL.md)
 - Discovery output: `.vibe-walk/discovery.json` (Phase 1 input)
@@ -407,4 +474,3 @@ Invoke `session-logger.end()` with:
 - Conventions (D1–D6): [`../guide/references/conventions.md`](../guide/references/conventions.md)
 - Friction triggers: [`../guide/references/friction-triggers.md`](../guide/references/friction-triggers.md)
 - Prev phase: [`../discover/SKILL.md`](../discover/SKILL.md) (M1)
-- Next phase: M4 (anchor-injection codemod), M5 (analytics wiring)

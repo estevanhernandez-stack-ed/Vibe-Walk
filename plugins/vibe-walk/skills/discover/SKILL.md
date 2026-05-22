@@ -1,5 +1,5 @@
 ---
-name: vibe-walk:discover
+name: discover
 description: "Phase 1 autonomous discovery for vibe-walk. Reads the target app's orientation docs, route surface, and component composition to produce a surface inventory, anchor-readiness verdict, ranked stop shortlist, named aha-moment candidate, and — most importantly — the build/don't-build/cheaper-first verdict. Runs entirely without asking the user anything. Writes output to .vibe-walk/discovery.json."
 ---
 
