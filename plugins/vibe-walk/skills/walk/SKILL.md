@@ -1,9 +1,9 @@
 ---
 name: vibe-walk:walk
-description: "Phase 1.5 interview gates for vibe-walk. Reads .vibe-walk/discovery.json, resolves the tour substrate via the decision tree (substrate_tree.py), then runs five interview gates — mode, trigger model, substrate confirmation, aha moment, and primary user role — asking only to confirm or resolve overrides. Writes resolved answers to .vibe-walk/build-plan.json. Hands off to Phase 2 (M3, not yet built)."
+description: "Phase 1.5 interview gates + Phase 2 tour generator for vibe-walk. Reads .vibe-walk/discovery.json, resolves the tour substrate via the decision tree (substrate_tree.py), runs five interview gates, writes .vibe-walk/build-plan.json, then invokes emit_tour_module (M3) to emit the Driver.js drop-in tour module."
 ---
 
-# /vibe-walk:walk — Phase 1.5 interview gates
+# /vibe-walk:walk — Phase 1.5 interview gates + Phase 2 tour generator
 
 Read [`../guide/SKILL.md`](../guide/SKILL.md) for the Sherpa persona, posture, and conventions, then follow this command.
 
@@ -11,7 +11,7 @@ Read [`../guide/SKILL.md`](../guide/SKILL.md) for the Sherpa persona, posture, a
 
 Phase 1.5 is the interview between discovery and build. Five gates. The substrate decision tree runs before any question is asked — never ask what the tree already answers. Ask only to confirm the tree's resolution or to resolve an explicit override condition.
 
-At the end of this SKILL, the resolved answers land in `.vibe-walk/build-plan.json`. **Phase 2 (the actual tour generation) is built in M3.** For now this SKILL writes the plan and hands off gracefully.
+At the end of the five gates, the resolved answers land in `.vibe-walk/build-plan.json`. **Phase 2 (M3) is now built** — after writing the build plan, invoke `emit_tour_module.emit_module(build_plan)` to emit the Driver.js drop-in tour module (spotlightSteps.ts + spotlightTour.ts). Write the emitted files to the app's tour directory (e.g., `src/components/tour/`). Surface any warnings from the emitter (e.g., the D1 5-step cap split recommendation) before presenting the hand-off message.
 
 ```
 read discovery.json
@@ -22,7 +22,10 @@ read discovery.json
     → Gate 4: Aha moment — confirm M1 candidate
     → Gate 5: Primary user role
       → write build-plan.json
-        → hand off (Phase 2 not yet built — M3)
+        → invoke emit_tour_module.emit_module(build_plan)
+          → write emitted files to app tour directory
+            → surface warnings (D1 cap, etc.)
+              → hand off (Phase 2 complete — M3 built)
 ```
 
 ## Prerequisites
@@ -316,10 +319,29 @@ Write to `.vibe-walk/build-plan.json` (create `.vibe-walk/` if absent):
 }
 ```
 
-### 7. Hand-off message
+### 7. Invoke Phase 2 (emit_tour_module)
+
+After writing the build plan, call the Phase 2 generator:
+
+```python
+from build.emit_tour_module import emit_module
+result = emit_module(build_plan)  # build_plan is the dict written to build-plan.json
+
+# Surface any warnings (D1 cap, split recommendation, etc.)
+for w in result["warnings"]:
+    print(f"  ⚠  {w}")
+
+# Write emitted files to the app's tour directory
+# Default target: src/components/tour/ (or equivalent for the app's structure)
+for rel_path, contents in result["files"].items():
+    write_to_app_tour_dir(app_path, rel_path, contents)
+```
+
+### 8. Hand-off message
 
 ```
 Build plan written to .vibe-walk/build-plan.json.
+Tour module emitted to src/components/tour/.
 
 Resolved:
   Mode:       walkthrough (v1)
@@ -327,12 +349,22 @@ Resolved:
   Substrate:  <substrate> — anchor: <anchor_attr>
   Aha moment: <aha_moment.surface>
   Role:       <primary_user_role>
+  Steps:      <N> of <original_count> (D1 cap: 5 max)
 
-Phase 2 (tour generation) is coming in M3. When it lands, run /vibe-walk:walk again
-and it will pick up from this build plan automatically.
+Files written:
+  spotlightSteps.ts — <N>-stop DriveStep[] array, data-tour anchors
+  spotlightTour.ts  — driver() runner, showProgress, SSR guard, replay export
+
+<if warnings>
+Notes:
+  <warnings listed here>
+</if>
+
+Next: wire the data-tour anchors (M4 anchor-injection pass) and the analytics
+hooks (M5). Both are pending. Run /vibe-walk:walk again after M4 is built.
 ```
 
-### 8. Friction-logger triggers summary
+### 9. Friction-logger triggers summary
 
 For `/vibe-walk:walk`, fire `friction-logger.log()` when:
 
@@ -342,7 +374,7 @@ For `/vibe-walk:walk`, fire `friction-logger.log()` when:
 | Builder asks for more than 5 steps at any point | `guardrail_pushed` | `medium` — capture requested count |
 | A REVIEW_NEEDED anchor item (future M4) is declared "can't anchor this" | `anchor_unresolvable` | `high` |
 
-### 9. Session end
+### 10. Session end
 
 Invoke `session-logger.end()` with:
 - `sessionUUID` from step 1
@@ -351,7 +383,7 @@ Invoke `session-logger.end()` with:
 - `key_decisions`: `["substrate: <X>", "trigger: <Y>", "aha: <surface>", "role: <Z>"]`
 - `user_pushback`: `true` if the builder overrode the substrate or aha candidate
 - `friction_notes`: array of any friction signals captured this run
-- `tour_built`: `false` (M3 not yet built)
+- `tour_built`: `true` (M3 built — emit_tour_module invoked)
 - `anchor_review_needed`: `null` (M4 not yet built)
 
 ## Hard rules
@@ -360,13 +392,14 @@ Invoke `session-logger.end()` with:
 - **Never ask multiple gates at once.** Keep them sequential. Gate 2's sub-question is the only in-gate compound — and it fires immediately after Gate 2's main question.
 - **Intro.js is not available.** Reject any attempt to select it with a clear reason (AGPL-3).
 - **Shadow DOM stops → untourable.** No substrate work-arounds this. Present the options and let the builder decide.
-- **The build plan is authoritative.** Phase 2 (M3) reads it. Write it completely before presenting the hand-off message.
-- **Don't run Phase 2 here.** M3 is not yet built. The SKILL ends at the build-plan write + hand-off message.
+- **The build plan is authoritative.** Phase 2 (M3) reads it. Write it completely before invoking emit_tour_module.
+- **D1 is enforced by the emitter.** If emit_module returns warnings, surface them to the builder before presenting the hand-off.
 
 ## Cross-references
 
 - Guide (Sherpa persona + posture): [`../guide/SKILL.md`](../guide/SKILL.md)
 - Substrate decision tree: `../../scripts/build/substrate_tree.py`
+- Phase 2 emitter: `../../scripts/build/emit_tour_module.py` (M3 — built)
 - Session logger: [`../session-logger/SKILL.md`](../session-logger/SKILL.md)
 - Friction logger: [`../friction-logger/SKILL.md`](../friction-logger/SKILL.md)
 - Discovery output: `.vibe-walk/discovery.json` (Phase 1 input)
@@ -374,4 +407,4 @@ Invoke `session-logger.end()` with:
 - Conventions (D1–D6): [`../guide/references/conventions.md`](../guide/references/conventions.md)
 - Friction triggers: [`../guide/references/friction-triggers.md`](../guide/references/friction-triggers.md)
 - Prev phase: [`../discover/SKILL.md`](../discover/SKILL.md) (M1)
-- Next phase: Phase 2 generator (M3, not yet built)
+- Next phase: M4 (anchor-injection codemod), M5 (analytics wiring)
