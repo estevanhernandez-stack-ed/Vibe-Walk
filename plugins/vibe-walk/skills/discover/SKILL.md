@@ -71,7 +71,8 @@ from discovery.build_verdict import decide_verdict
 signals = {
     "interactive_surface_count": result["interactive_surface_count"],
     "audience":                  _infer_audience(result["product_summary"]),
-    "existing_onboarding":       _has_existing_onboarding(app_path),
+    "existing_tour":             _has_existing_tour(app_path),
+    "existing_intro_flow":       _has_existing_intro_flow(app_path),
     "app_category":              _infer_app_category(result["product_summary"], app_path),
     "anchor_readiness":          readiness_result["readiness"],
     "no_stable_selectors":       "no_stable_selectors" in readiness_result["risk_flags"],
@@ -87,7 +88,8 @@ verdict_result = decide_verdict(signals)
 **Signal inference helpers (inline in the SKILL execution, not separate scripts):**
 
 - `_infer_audience` — scan product_summary for keywords: "expert", "power user", "admin", "developer", "engineer", "analyst" → `"domain_expert"`; "B2B", "team", "enterprise" → `"b2b"`; else `"b2c"`.
-- `_has_existing_onboarding` — scan app_path for files matching `*tour*`, `*onboard*`, `*walkthrough*`, `*spotlight*`, `*guide*` (case-insensitive). If found → `True`.
+- `_has_existing_tour` — scan app_path for files matching `*tour*`, `*spotlight*`, `*coachmark*`, `*walkthrough*` (case-insensitive), OR `package.json` containing tour library names (`driver.js`, `shepherd.js`, `react-joyride`, `intro.js`, `reactour`). Skip directories: `node_modules`, `.git`, `.agent`. If found → `True` (sets `existing_tour` → fires don't-build Condition 3). **Do NOT match on `*onboard*`, `*welcome*`, `*guide*`, `*intro*`, `*flyby*` — those are signup/intro flows that are complementary to a tour, not redundant.**
+- `_has_existing_intro_flow` — scan app_path for files matching `*onboard*`, `*welcome*`, `*intro*`, `*guide*`, `*flyby*` (case-insensitive). Skip directories: `node_modules`, `.git`, `.agent`. If found → `True` (sets `existing_intro_flow` — used by the walk phase for trigger sequencing, NOT a don't-build signal). **Example: Celestia3's `OnboardingExperience.tsx` + `WelcomeModal.tsx` → `existing_intro_flow=True`, `existing_tour=False` → verdict is still `build`.**
 - `_infer_app_category` — "CLI", "command-line", "terminal" in summary → `"cli"`; "calculator", "converter", "generator" + single page → `"single_purpose"`; else `"web_app"`.
 - `_detect_blank_canvas` — surface list contains a canvas/whiteboard/drawing surface AND no data-seeded content found → `True`.
 - `_infer_high_urgency` — "emergency", "incident", "real-time alert", "critical" in summary → `True`.
@@ -114,7 +116,11 @@ State it explicitly:
 Aha-moment candidate: <ComponentName> — <one sentence why this is the first-success moment>
 ```
 
-This becomes step 1 of any tour that gets built.
+This becomes the tour's **emotional payoff stop**. Its placement depends on tour length:
+- **<= 3 stops**: aha-moment is step 1 (immediate payoff — short tours benefit from it).
+- **4-5 stops**: aha-moment is placed near the END (earned-payoff arc — build context first).
+
+The Phase 1.5 Gate 4 confirms this placement with the builder.
 
 ### 8. Write discovery.json
 

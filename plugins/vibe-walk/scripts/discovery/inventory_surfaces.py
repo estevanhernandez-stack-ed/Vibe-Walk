@@ -128,38 +128,128 @@ def _read_product_summary(root: Path) -> str:
     """
     Extract a 1–4 sentence product summary from the first orientation doc found.
     Returns the first non-empty paragraph (up to 400 chars) from the doc.
+
+    CLAUDE.md is tried first (highest priority for product-aware context). If the
+    extracted summary is suspiciously short, starts with an HTML comment (e.g. a
+    gitnexus:start / AI-INDEX tooling preamble), or contains only markup, the next
+    orientation doc in the priority list is tried as a fallback.
+
+    Within a single doc, multiple paragraphs are extracted; the first non-tainted
+    paragraph wins. This handles the pattern where CLAUDE.md opens with a tooling
+    preamble section followed by real product description.
     """
+    first_tainted: str | None = None  # fallback of last resort
+
     for doc_name in _ORIENTATION_DOCS:
         doc_path = root / doc_name
         if doc_path.exists():
             try:
                 content = doc_path.read_text(encoding="utf-8", errors="ignore")
-                return _extract_first_paragraph(content, doc_path.name)
+                # Try all paragraphs in this doc — stop at the first clean one.
+                for para in _extract_all_paragraphs(content, doc_path.name):
+                    if not _is_tooling_preamble(para):
+                        return para
+                    if first_tainted is None:
+                        first_tainted = para
             except OSError:
                 continue
-    return ""
+
+    # All candidates were tainted — return whatever we scraped, or empty.
+    return first_tainted or ""
 
 
-def _extract_first_paragraph(content: str, filename: str) -> str:
+_RE_HTML_COMMENT_START = re.compile(r"^\s*<!--")
+_TOOLING_PREAMBLE_MARKERS = (
+    "gitnexus",
+    "ai-index",
+    "ai index",
+    "auto-generated",
+    "do not edit",
+    "repo index",
+)
+_MIN_QUALITY_CHARS = 30
+
+
+def _is_tooling_preamble(summary: str) -> bool:
     """
-    Return the first meaningful paragraph from a markdown/text doc.
-    Skips H1 titles and empty lines at the top.
+    Return True if the summary looks like a tooling preamble rather than a real
+    product description. Triggers:
+      - Starts with an HTML comment (<!-- ... -->)
+      - Contains known tooling preamble markers
+      - Is suspiciously short (< 30 chars) after stripping markup
+    """
+    if not summary:
+        return True
+    # HTML comment at start
+    if _RE_HTML_COMMENT_START.match(summary):
+        return True
+    # Known tooling preamble markers
+    summary_lower = summary.lower()
+    if any(marker in summary_lower for marker in _TOOLING_PREAMBLE_MARKERS):
+        return True
+    # Too short to be a real description
+    clean = re.sub(r"<!--.*?-->", "", summary, flags=re.DOTALL).strip()
+    if len(clean) < _MIN_QUALITY_CHARS:
+        return True
+    return False
+
+
+def _extract_all_paragraphs(content: str, filename: str) -> list[str]:
+    """
+    Extract all meaningful paragraphs from a markdown/text doc.
+    Skips:
+      - H1 title lines (# Foo) at the top
+      - Horizontal rules, badges, shields
+      - HTML comment blocks (<!-- ... -->) such as gitnexus:start / AI-INDEX headers
+      - Content bracketed between gitnexus/tooling delimiter comment lines
+    Each returned paragraph is capped at 400 chars.
     """
     lines = content.splitlines()
     paragraphs: list[str] = []
     current: list[str] = []
+    in_html_comment = False
+    # Track whether we are inside a known tooling section (e.g. between <!-- gitnexus:start -->
+    # and <!-- gitnexus:end --> where the text between the delimiters is tooling boilerplate).
+    in_tooling_section = False
 
     for line in lines:
         stripped = line.strip()
-        # Skip H1 title line (# Foo)
-        if stripped.startswith("# ") and not current:
+
+        # Track HTML comment blocks (<!-- ... --> may span multiple lines)
+        if in_html_comment:
+            if "-->" in stripped:
+                in_html_comment = False
+            continue  # skip all lines inside a comment block
+
+        if stripped.startswith("<!--"):
+            # Check for known tooling section delimiters before handling as a comment
+            stripped_lower = stripped.lower()
+            if any(marker in stripped_lower for marker in ("gitnexus:start", "ai-index:start", "tooling:start")):
+                in_tooling_section = True
+            elif any(marker in stripped_lower for marker in ("gitnexus:end", "ai-index:end", "tooling:end")):
+                in_tooling_section = False
+
+            if "-->" in stripped:
+                # Single-line comment — skip this line and continue
+                continue
+            else:
+                # Multi-line comment opens here
+                in_html_comment = True
+                continue
+
+        # Skip content inside a known tooling section
+        if in_tooling_section:
+            continue
+
+        # Skip H1 title line (# Foo) at the very top (before any paragraph has started)
+        if stripped.startswith("# ") and not current and not paragraphs:
             continue
         # Skip horizontal rules, badges, shields
         if stripped.startswith("---") or stripped.startswith("![") or stripped.startswith("[!["):
             continue
         if stripped == "":
             if current:
-                paragraphs.append(" ".join(current))
+                paragraphs.append(" ".join(current)[:400])
                 current = []
         else:
             # Strip leading markdown formatting (##, >, -, *)
@@ -168,14 +258,18 @@ def _extract_first_paragraph(content: str, filename: str) -> str:
                 current.append(clean)
 
     if current:
-        paragraphs.append(" ".join(current))
+        paragraphs.append(" ".join(current)[:400])
 
-    if not paragraphs:
-        return ""
+    return paragraphs
 
-    # Return the first meaningful paragraph, capped at 400 chars
-    summary = paragraphs[0][:400]
-    return summary
+
+def _extract_first_paragraph(content: str, filename: str) -> str:
+    """
+    Return the first meaningful paragraph from a markdown/text doc.
+    Wrapper around _extract_all_paragraphs — returns the first paragraph or "".
+    """
+    paragraphs = _extract_all_paragraphs(content, filename)
+    return paragraphs[0] if paragraphs else ""
 
 
 # ---------------------------------------------------------------------------

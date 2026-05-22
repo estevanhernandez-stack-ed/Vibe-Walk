@@ -18,8 +18,26 @@ audience : str
     One of: "b2c", "b2b", "technical", "domain_expert", "power_user".
     "domain_expert" and "power_user" are the don't-build signals.
 
-existing_onboarding : bool
-    True if comprehensive onboarding is already present in the app.
+existing_tour : bool
+    True if a same-surface in-product guided tour / spotlight / coachmark /
+    walkthrough library is already present. This is the precise don't-build
+    signal: stacking a new tour on an existing one trains dismiss-reflex.
+    Detected via patterns like *tour*, *spotlight*, *coachmark*, *walkthrough*
+    and the presence of tour libraries (driver.js, shepherd, intro, joyride,
+    reactour).
+
+existing_onboarding : bool  [BACKWARD-COMPAT ALIAS for existing_tour]
+    Legacy name. Still accepted. Treated identically to existing_tour=True.
+    New callers should use existing_tour instead. Signup/intro/welcome flows
+    that do NOT cover the same surface as the proposed tour should NOT set
+    this — use existing_intro_flow instead.
+
+existing_intro_flow : bool
+    True if a pre-dashboard signup / intro / flyby / welcome flow is present.
+    This is NOT a don't-build signal — a signup flow and a dashboard-orientation
+    tour are complementary, not redundant. This signal informs TRIGGER
+    SEQUENCING in the walk phase (tour fires AFTER the intro flow completes),
+    not the build verdict.
 
 app_category : str
     One of: "web_app", "single_purpose", "cli", "code_surface", "saas", ...
@@ -115,11 +133,20 @@ def decide_verdict(signals: dict) -> dict:
             "spotlight tours patronising and frequently dismiss them on sight."
         )
 
-    # Condition 3: existing comprehensive onboarding already present
-    if signals.get("existing_onboarding", False):
+    # Condition 3: existing in-product tour/spotlight already present
+    # Fire when:
+    #   - existing_tour=True  (the precise new key), OR
+    #   - existing_onboarding=True  (legacy key — backward-compat alias)
+    # Do NOT fire on existing_intro_flow=True alone — a signup/welcome/flyby
+    # flow is complementary to a dashboard-orientation tour, not redundant with it.
+    # The Celestia3 case: OnboardingExperience.tsx (birth-data flyby) + WelcomeModal
+    # → existing_intro_flow=True, but the dashboard tour is still needed → build.
+    existing_tour = signals.get("existing_tour", False) or signals.get("existing_onboarding", False)
+    if existing_tour:
         dont_build_reasons.append(
-            "Comprehensive onboarding already exists — stacking a tour on top "
-            "trains a dismiss reflex without adding real value."
+            "An in-product guided tour / spotlight / walkthrough already covers this "
+            "surface — stacking a new tour on top trains a dismiss reflex without "
+            "adding real value."
         )
 
     # Condition 4: single-purpose tool

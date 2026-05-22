@@ -173,3 +173,66 @@ def test_nonexistent_path_returns_none_with_flag():
     result = assess("/nonexistent/path/to/repo")
     assert result["readiness"] == "none"
     assert "path_not_found" in result["risk_flags"]
+
+
+# ---------------------------------------------------------------------------
+# FIX 2 — P1: dynamic_mount flag is repo-scoped, not stop-scoped
+# The assess() result exposes dynamic_mount as a risk flag when dynamic imports
+# exist anywhere in the repo. The walk SKILL is responsible for per-stop scoping.
+# Test: a repo with repo-wide dynamic imports should still report dynamic_mount
+# in risk_flags (so the SKILL can make a per-stop decision), but the SKILL
+# should NOT map it blindly to needs_async_mount_wait=True for eager stops.
+# This test verifies the assess() contract — not the SKILL behavior.
+# ---------------------------------------------------------------------------
+
+def test_dynamic_mount_flag_raised_on_repo_wide_dynamic_imports(tmp_path):
+    """
+    A repo with dynamic import() calls anywhere should raise 'dynamic_mount'
+    in risk_flags. This is the correct fine-grained signal — it's the SKILL's
+    job to scope it per stop, not anchor_readiness.assess()'s job.
+    """
+    src = tmp_path / "src"
+    src.mkdir()
+
+    # A page with dynamic imports (simulating performance lazy-loading)
+    (src / "HeavyPage.tsx").write_text(
+        "const LazyChart = React.lazy(() => import('./LazyChart'));\n"
+        "export default function HeavyPage() {\n"
+        "  return <div id='heavy-page'><LazyChart /></div>;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    # An eagerly-rendered stop with stable selectors
+    (src / "Dashboard.tsx").write_text(
+        "export default function Dashboard() {\n"
+        "  return <div id='tour-dashboard' data-tour='dashboard'>Dashboard</div>;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    result = assess(str(tmp_path))
+
+    # dynamic_mount should be flagged (repo-wide detection is correct)
+    assert "dynamic_mount" in result["risk_flags"], (
+        "Repo with dynamic import() should flag dynamic_mount so SKILL can handle per-stop."
+    )
+    # Readiness should still reflect the actual selectors present
+    assert result["readiness"] in ("ready", "needs-pass"), (
+        "Presence of stable selectors must still drive the readiness verdict even "
+        "when dynamic_mount is flagged."
+    )
+
+
+def test_dynamic_mount_flag_not_raised_without_dynamic_imports(tmp_path):
+    """No dynamic imports → no dynamic_mount flag."""
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "Dashboard.tsx").write_text(
+        "import Chart from './Chart';\n"
+        "export default function Dashboard() {\n"
+        "  return <div id='dashboard'><Chart /></div>;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    result = assess(str(tmp_path))
+    assert "dynamic_mount" not in result["risk_flags"]

@@ -136,3 +136,87 @@ def test_surface_file_paths_are_non_empty():
     result = inventory(str(FIXTURES / "tour_worthy_app"))
     for surface in result["surfaces"]:
         assert surface.get("file", "").strip() != "", f"Empty file path in surface: {surface}"
+
+
+# ---------------------------------------------------------------------------
+# FIX 3 — P1: product-summary extraction skips tooling preamble headers
+# ---------------------------------------------------------------------------
+
+def test_product_summary_skips_gitnexus_preamble(tmp_path):
+    """
+    CLAUDE.md that opens with a <!-- gitnexus:start --> block must NOT have
+    its tooling header end up as the product summary. The real content below
+    the preamble (or README.md fallback) must be used instead.
+    """
+    # Write a CLAUDE.md with a GitNexus tooling preamble (the Celestia3 failure mode)
+    claude_md = tmp_path / "CLAUDE.md"
+    claude_md.write_text(
+        "<!-- gitnexus:start -->\n"
+        "GitNexus Code Intelligence — repo index auto-generated, do not edit\n"
+        "<!-- gitnexus:end -->\n"
+        "\n"
+        "# Celestia3\n"
+        "\n"
+        "Celestia3 is a real-time astrology webapp that renders your natal chart in 3D.\n"
+        "Built with Next.js App Router + Firebase, it combines ephemeris data, AI chat, "
+        "and collaborative chart-sharing.\n",
+        encoding="utf-8",
+    )
+    # Create a minimal src structure so inventory doesn't error
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "App.tsx").write_text(
+        "export default function App() { return <div>App</div>; }\n",
+        encoding="utf-8",
+    )
+
+    result = inventory(str(tmp_path))
+    summary = result["product_summary"]
+
+    # Must NOT start with the GitNexus preamble
+    assert not summary.startswith("<!--"), (
+        f"Summary should not start with HTML comment. Got: {summary!r}"
+    )
+    assert "gitnexus" not in summary.lower(), (
+        f"Summary should not contain GitNexus tooling text. Got: {summary!r}"
+    )
+    # Must contain real content
+    assert "celestia" in summary.lower() or "astrology" in summary.lower(), (
+        f"Summary should describe the real product. Got: {summary!r}"
+    )
+
+
+def test_product_summary_falls_back_to_readme_when_claude_md_is_tooling_only(tmp_path):
+    """
+    When CLAUDE.md is entirely tooling boilerplate (no real description),
+    the summary should fall back to README.md.
+    """
+    claude_md = tmp_path / "CLAUDE.md"
+    claude_md.write_text(
+        "<!-- gitnexus:start -->\n"
+        "GitNexus Code Intelligence — auto-generated\n"
+        "<!-- gitnexus:end -->\n",
+        encoding="utf-8",
+    )
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        "# Orion App\n\n"
+        "Orion App helps teams track project velocity and sprint health in real time.\n",
+        encoding="utf-8",
+    )
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "App.tsx").write_text(
+        "export default function App() { return <div>App</div>; }\n",
+        encoding="utf-8",
+    )
+
+    result = inventory(str(tmp_path))
+    summary = result["product_summary"]
+
+    assert "orion" in summary.lower() or "velocity" in summary.lower(), (
+        f"Should fall back to README when CLAUDE.md is tooling-only. Got: {summary!r}"
+    )
+    assert "gitnexus" not in summary.lower(), (
+        f"GitNexus preamble must not appear in summary. Got: {summary!r}"
+    )

@@ -77,7 +77,7 @@ signals = {
     "tour_spans_multiple_routes": _detect_multi_route(discovery, ranked_shortlist),
     "has_shadow_dom_stops":       "shadow_dom" in anchor_readiness["risk_flags"],
     "output_shape":               "module",   # default; may change at Gate 3
-    "needs_async_mount_wait":     "dynamic_mount" in anchor_readiness["risk_flags"],
+    "needs_async_mount_wait":     _detect_async_mount_in_stops(ranked_shortlist, app_path),
     "heavily_animated":           False,      # unknown until Gate 3 override
     "wants_idiomatic_react":      False,      # unknown until Gate 3 override
     "bundle_size_sensitive":      False,      # unknown until Gate 3 override
@@ -90,6 +90,7 @@ substrate_result = resolve_substrate(signals)
 
 - `_infer_framework` — scan app root for config files and package.json (see step 2). Returns a framework string.
 - `_detect_multi_route` — if `ranked_shortlist` items span more than one distinct `view` value → `True`. If `view` is missing or all items share one view → `False`.
+- `_detect_async_mount_in_stops` — scan ONLY the source files listed in `ranked_shortlist` (the planned tour stop files, not the whole repo) for `import(` / `React.lazy(` patterns. Return `True` only if a tour stop file itself uses dynamic imports or lazy loading. **Do NOT use the repo-wide `dynamic_mount` flag from `anchor_readiness` for this signal** — the flag fires on ANY dynamic import in the repo (e.g. performance lazy-loading for unrelated views). Mapping it repo-wide would force `react-joyride` substrate for apps like Celestia3 whose tour stops are all eagerly rendered. If in doubt, default to `False` and confirm at Gate 3.
 
 ### 4. Run the five interview gates
 
@@ -148,12 +149,28 @@ Default is A.
 
 ```
 Sub-question: What other modals, banners, or overlays fire on first login?
-(welcome modal, cookie banner, terms prompt, free-trial nudge, etc.)
+(welcome modal, cookie banner, terms prompt, free-trial nudge, intro flyby, etc.)
 
 Knowing the sequence prevents stacking — the tour should queue behind the welcome
 modal AND a qualifying first action, not fire on raw modal-close.
 
 → List anything that fires on first visit, or "none."
+```
+
+**Pre-fill from discovery when `existing_intro_flow=True`:**
+If Phase 1's signal assembly detected `existing_intro_flow=True` (signup/onboarding/welcome files
+found — e.g. `OnboardingExperience.tsx`, `WelcomeModal.tsx`), pre-fill the sub-question answer:
+
+```
+Sub-question: What other modals, banners, or overlays fire on first login?
+
+Phase 1 detected an intro/onboarding flow in this app:
+  <list of detected files matching *onboard*, *welcome*, *intro*, *flyby*>
+
+Recommendation: the tour should fire AFTER this flow completes + a qualifying first
+dashboard action (not on raw onboarding-close). Default trigger: auto-once + replay.
+
+→ Confirm this sequencing, or describe the actual first-login overlay order.
 ```
 
 **Friction trigger:** none at this gate (defaults are well-reasoned; the sub-question is informational).
@@ -229,7 +246,12 @@ key-skew. If not v1.x, the SKILL will fall back to drop-in module output (Shape 
 
 #### Gate 4 — Aha moment
 
-**Purpose:** confirm Phase 1's aha-moment candidate. This becomes step 1 of the tour.
+**Purpose:** confirm Phase 1's aha-moment candidate and its position in the tour.
+
+**Position rule (context-dependent — encode this in the gate message):**
+- **<= 3 stops**: aha-moment is step 1 (aha-first — immediate payoff).
+- **4-5 stops**: aha-moment is placed near the END (orientation-first → earned-payoff arc).
+  The emitter places it at position `n-2` (second-to-last) to build context before the payoff.
 
 **What to say:**
 
@@ -239,10 +261,19 @@ Gate 4 of 5 — Aha moment
 Phase 1 named this as the aha-moment candidate:
   <aha_moment["surface"]> — <aha_moment["reason"]>
 
-Step 1 of the tour routes here. Everything before it is approach; this is the payoff.
+Tour has <N> stops. Position rule:
+  <IF N <= 3>: Step 1 routes here — immediate payoff.
+  <IF N >= 4>: Orientation-first arc — this stop appears near the END (step <N-1> of <N>),
+               after context has been built up. The cowpath arc: orient → explore → payoff.
 
 → Confirmed? Or do you have a different surface in mind?
 ```
+
+**If the builder wants to override the position rule:**
+- Accept it. Note the override. The emitter's `_order_stops_contextually` handles placement;
+  if the builder wants aha-first on a 5-stop tour, document the override in build-plan.json
+  (`aha_position_override: "first"`) so the emitter can be extended to honor it in a future version.
+  For now, document it as a builder note — don't hold up the build.
 
 **If the builder names a different surface:**
 - Accept it. Update `aha_moment` in working state. Do not re-litigate.

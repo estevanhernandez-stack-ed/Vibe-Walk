@@ -25,7 +25,9 @@ def _base_signals(**overrides) -> dict:
     base = {
         "interactive_surface_count": 8,
         "audience": "b2c",
-        "existing_onboarding": False,
+        "existing_onboarding": False,   # backward-compat key (old name)
+        "existing_tour": False,          # new precise key: in-product tour/spotlight
+        "existing_intro_flow": False,    # pre-dashboard signup/intro flow (trigger-sequencing only)
         "app_category": "web_app",
         "anchor_readiness": "ready",
         "no_stable_selectors": False,
@@ -71,11 +73,71 @@ def test_dont_build_domain_expert_audience():
 
 
 def test_dont_build_existing_comprehensive_onboarding():
-    """Existing comprehensive onboarding already present → don't-build."""
-    signals = _base_signals(existing_onboarding=True)
+    """Existing in-product TOUR/spotlight already present → don't-build."""
+    # existing_tour = True means a same-surface tour/spotlight is present
+    signals = _base_signals(existing_tour=True)
     result = decide_verdict(signals)
     assert result["verdict"] == "don't-build"
-    assert any("onboarding" in r.lower() for r in result["reasons"])
+    assert any("tour" in r.lower() or "onboarding" in r.lower() for r in result["reasons"])
+
+
+# ---------------------------------------------------------------------------
+# FIX 1 — P0: signup/intro flow alone does NOT trigger don't-build
+# ---------------------------------------------------------------------------
+
+def test_existing_intro_flow_alone_does_not_dont_build():
+    """
+    An existing signup/intro/flyby/welcome flow does NOT make a dashboard-orientation
+    tour redundant. Condition 3 fires only when a same-surface in-product TOUR exists.
+    Celestia3 regression: flyby + WelcomeModal → still should verdict 'build'.
+    """
+    signals = _base_signals(existing_intro_flow=True, existing_tour=False)
+    result = decide_verdict(signals)
+    assert result["verdict"] == "build", (
+        f"An intro/signup flow alone must not block a tour. Got: {result}"
+    )
+
+
+def test_celestia3_regression_flyby_and_welcome_modal():
+    """
+    Regression: Celestia3 had OnboardingExperience.tsx (flyby) + WelcomeModal.tsx.
+    These are pre-dashboard flows — they do NOT make a dashboard tour redundant.
+    Verdict must be 'build'.
+    """
+    signals = _base_signals(
+        existing_intro_flow=True,   # flyby + WelcomeModal detected
+        existing_tour=False,        # no in-product tour/spotlight exists
+    )
+    result = decide_verdict(signals)
+    assert result["verdict"] == "build", (
+        f"Celestia3 regression: flyby + WelcomeModal must not block tour. Got: {result}"
+    )
+
+
+def test_existing_tour_triggers_dont_build_existing_intro_flow_does_not():
+    """
+    Confirm the distinction: existing_tour=True → don't-build; existing_intro_flow=True alone → build.
+    """
+    tour_signals = _base_signals(existing_tour=True, existing_intro_flow=False)
+    intro_signals = _base_signals(existing_tour=False, existing_intro_flow=True)
+
+    tour_result = decide_verdict(tour_signals)
+    intro_result = decide_verdict(intro_signals)
+
+    assert tour_result["verdict"] == "don't-build", "existing_tour must fire don't-build"
+    assert intro_result["verdict"] == "build", "existing_intro_flow alone must not fire don't-build"
+
+
+def test_backward_compat_existing_onboarding_key():
+    """
+    Backward-compat: the old 'existing_onboarding' key still fires don't-build
+    so callers that haven't updated their signal assembly keep working.
+    """
+    signals = _base_signals(existing_onboarding=True)
+    result = decide_verdict(signals)
+    assert result["verdict"] == "don't-build", (
+        "Backward-compat: existing_onboarding=True must still fire don't-build"
+    )
 
 
 def test_dont_build_single_purpose_tool():

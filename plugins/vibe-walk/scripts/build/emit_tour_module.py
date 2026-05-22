@@ -89,8 +89,12 @@ def emit_module(build_plan: dict) -> dict:
     stops: list[dict] = _sorted_stops(build_plan)
     aha_surface: str = build_plan.get("aha_moment", {}).get("surface", "")
 
-    # Reorder: aha moment surfaces first (D4-aha rule from Phase 2 spec)
-    stops = _reorder_aha_first(stops, aha_surface)
+    # Context-dependent stop ordering (cowpath-earned rule):
+    #   <= 3 stops: aha-first (emotional payoff immediate — short tours benefit from it)
+    #   4-5 stops:  orientation-first → aha near the END (earned-payoff arc)
+    # This matches the Celestia3 cowpath decision: sidebar nav first → natal chart last.
+    # The 3-stop boundary is where "aha-first feels disjointed" starts to bite.
+    stops = _order_stops_contextually(stops, aha_surface)
 
     # D1 — hard cap at 5 steps
     if len(stops) > _STEP_CAP:
@@ -336,10 +340,21 @@ def _sorted_stops(build_plan: dict) -> list[dict]:
     return sorted(shortlist, key=lambda s: s.get("rank", 9999))
 
 
-def _reorder_aha_first(stops: list[dict], aha_surface: str) -> list[dict]:
+def _order_stops_contextually(stops: list[dict], aha_surface: str) -> list[dict]:
     """
-    Move the stop matching the aha-moment surface to position 0.
-    If not found, return stops unchanged (no crash).
+    Context-dependent stop ordering (cowpath-earned rule):
+
+    <= 3 stops: aha-first
+        The aha-moment stop is moved to position 0. Short tours benefit from
+        immediate emotional payoff — there isn't enough context to build to it.
+
+    4+ stops: orientation-first → aha near the END (earned-payoff arc)
+        The aha-moment stop is moved to the second-to-last position. The tour
+        starts with orientation stops (sidebar, shell, feed) and builds toward
+        the emotional payoff. This matches the Celestia3 cowpath design:
+        sidebar nav first → natal chart last.
+
+    If aha_surface is not found in stops, return stops unchanged.
     """
     if not aha_surface:
         return stops
@@ -350,11 +365,37 @@ def _reorder_aha_first(stops: list[dict], aha_surface: str) -> list[dict]:
             aha_idx = i
             break
 
-    if aha_idx is None or aha_idx == 0:
-        return stops
+    if aha_idx is None:
+        return stops  # aha stop not in list — no reorder
 
-    reordered = [stops[aha_idx]] + stops[:aha_idx] + stops[aha_idx + 1:]
-    return reordered
+    n = len(stops)
+
+    if n <= 3:
+        # Aha-first: move aha to position 0
+        if aha_idx == 0:
+            return stops  # already first
+        reordered = [stops[aha_idx]] + stops[:aha_idx] + stops[aha_idx + 1:]
+        return reordered
+    else:
+        # Orientation-first: move aha to second-to-last position (n-2)
+        # "Near the end" but not the very last stop — last stop is typically
+        # an escape hatch (AI chat, replay button, etc.).
+        # If there's only 1 non-aha stop after the proposed position, place aha last.
+        target_pos = max(n - 2, 1)  # at least position 1, at most n-2
+        if aha_idx == target_pos:
+            return stops  # already in position
+        # Remove aha from current position and insert at target
+        remaining = stops[:aha_idx] + stops[aha_idx + 1:]
+        reordered = remaining[:target_pos] + [stops[aha_idx]] + remaining[target_pos:]
+        return reordered
+
+
+def _reorder_aha_first(stops: list[dict], aha_surface: str) -> list[dict]:
+    """
+    Legacy wrapper — preserved for any external callers that imported this directly.
+    Delegates to _order_stops_contextually.
+    """
+    return _order_stops_contextually(stops, aha_surface)
 
 
 def _derive_app_slug(app_path: str) -> str:

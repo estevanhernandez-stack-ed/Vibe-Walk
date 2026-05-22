@@ -202,3 +202,62 @@ Generated plugin output under `docs/dogfood/celestia3-output/`:
 - `TOUR_ANALYTICS.md` — wiring guide
 
 Comparison target read from: `git show feat/spotlight-tour:src/components/tour/spotlightSteps.ts` and `spotlightTour.ts`.
+
+---
+
+## Re-verify (post-fix)
+
+**Date:** 2026-05-22
+**Fixes applied:** P0 (verdict false-negative), P1 × 2 (dynamic_mount over-fire, product-summary tooling header), ordering refinement (FIX 4).
+**Suite at time of re-verify:** 136 Python + 23 JS green (was 125 + 23).
+
+### (a) Verdict — CONFIRMED `build`
+
+**Before (broken):** `don't-build` — Condition 3 fired because `_has_existing_onboarding` matched `OnboardingExperience.tsx` and `WelcomeModal.tsx`.
+
+**After (fixed):** `build` — reasons: `[]`
+
+The signal split is now correct:
+- `existing_tour=False` — no `*tour*` / `*spotlight*` / `*coachmark*` / `*walkthrough*` files found in Celestia3.
+- `existing_intro_flow=True` — `OnboardingExperience.tsx`, `WelcomeModal.tsx`, `OnboardingService.ts` detected. This feeds trigger-sequencing in Gate 2 (tour fires after the flyby + first dashboard action), NOT the don't-build verdict.
+- Condition 3 no longer fires on intro/signup flows alone.
+
+### (b) Substrate — CONFIRMED `driver.js`
+
+**Before (broken, if SKILL ran as written):** `react-joyride` (mandatory, Branch 5) — because `dynamic_mount` repo-wide flag → `needs_async_mount_wait=True` → substrate tree forced Branch 5.
+
+**After (fixed):** `driver.js` (confirm_only=True) — because `_detect_async_mount_in_stops` scopes to planned tour stop files only. Celestia3's tour stops (sidebar, dashboard, transit feed, natal compass) are all on the home/compass view which renders eagerly. The repo-wide `dynamic_mount` flag (from performance lazy-loading on OTHER views) no longer corrupts the substrate signal.
+
+Old mapping: `needs_async_mount_wait = "dynamic_mount" in anchor_readiness["risk_flags"]` → `react-joyride`
+New mapping: `needs_async_mount_wait = _detect_async_mount_in_stops(ranked_shortlist, app_path)` → `False` → `driver.js`
+
+### (c) Product summary — CONFIRMED reads real description
+
+**Before (broken):** `"<!-- gitnexus:start --> GitNexus Code Intelligence"` — tooling preamble extracted verbatim.
+
+**After (fixed):** `"A production-grade spiritual-technical platform that bridges ancient esoteric wisdom with cutting-edge agentic AI."` — the `_extract_all_paragraphs` function now skips HTML comment blocks and lines bracketed by gitnexus-style delimiter tags. The `_is_tooling_preamble` check also rejects any summary containing known tooling markers, falling through to the next clean paragraph or the next orientation doc (README).
+
+### (d) 6-stop plan — CONFIRMED caps to 5, orientation-first
+
+**Before (D1 cap applied, but ordering was aha-first):** NatalCompass at step 1, sidebar-nav bumped to step 2.
+
+**After (FIX 4 applied):** 6 stops → D1 cap fires (warning emitted: "1 stop(s) trimmed"), caps to 5. Context-dependent ordering: 5-stop tour → orientation-first arc. Stop order:
+1. sidebar-nav (orientation)
+2. dashboard-shell (orientation)
+3. transit-feed (orientation)
+4. athanor-chat (utility/escape hatch)
+5. natal-compass (aha-moment — earned payoff, step 5 of 5)
+
+`tarot-deck` (rank 6) is the trimmed stop — consistent with the original dogfood report's expected trim behavior.
+
+### Summary scorecard (post-fix)
+
+| Check | Before | After |
+|---|---|---|
+| Verdict | `don't-build` (WRONG) | `build` (CORRECT) |
+| Substrate | `react-joyride` (WRONG, if SKILL ran as written) | `driver.js` (CORRECT) |
+| Product summary | `"GitNexus Code Intelligence"` (WRONG) | Real Celestia3 description (CORRECT) |
+| Stop order (5 stops) | Aha-first (NatalCompass step 1) | Orientation-first (NatalCompass step 5) |
+| D1 cap | 5 stops, 1 trimmed | 5 stops, 1 trimmed (unchanged — correct) |
+
+**All 4 confirmation criteria met. Plugin is now publishable for the P0+P1 surface.** Remaining P2/P3 items (anchor contract docs, button labels, D1 cap review) are tracked in the prioritized fixes list above — none are disqualifying.

@@ -449,25 +449,195 @@ class TestAudienceRegister:
 # ---------------------------------------------------------------------------
 
 class TestAhaMoment:
-    """The first step must reference the aha-moment surface."""
+    """Context-dependent aha-moment ordering (FIX 4).
 
-    def test_first_step_references_aha_moment(self):
+    <= 3 stops: aha-first (step 1 is the aha moment).
+    4-5 stops:  orientation-first, aha near the END (earned-payoff arc).
+    """
+
+    def test_aha_present_in_steps(self):
+        """Aha-moment anchor must always appear somewhere in the steps."""
         plan = _build_plan_4_stops()
         aha_anchor = plan["aha_moment"]["surface"]
         result = emit_module(plan)
         steps_content = _get_steps_file(result)
-
-        # The aha anchor should appear first (or at least appear)
         assert aha_anchor in steps_content, (
             f"Aha moment anchor '{aha_anchor}' not found in steps.\n{steps_content[:800]}"
         )
 
-        # It should be the first step — the first selector occurrence should be the aha anchor
+    # -----------------------------------------------------------------------
+    # <= 3 stops → aha FIRST
+    # -----------------------------------------------------------------------
+
+    def _build_plan_3_stops(self) -> dict:
+        """3-stop plan where rank-1 is NOT the aha-moment surface."""
+        return {
+            "schema_version": 1,
+            "app_path": "/projects/my-app",
+            "mode": "walkthrough",
+            "trigger_model": "auto-once-replay",
+            "first_login_overlays": [],
+            "substrate": "driver.js",
+            "anchor_attr": "data-tour",
+            "substrate_reason": "Default.",
+            "substrate_overridden": False,
+            "driver_js_version": None,
+            "aha_moment": {
+                "surface": "natal-compass",
+                "reason": "The aha moment — first time the user sees their chart.",
+            },
+            "primary_user_role": "single",
+            "two_tour_branching": False,
+            "ranked_shortlist": [
+                {
+                    "name": "sidebar-nav",
+                    "file": "src/components/Sidebar.tsx",
+                    "purpose": "Navigation sidebar",
+                    "view": "component",
+                    "rank": 1,
+                    "anchor": "sidebar-nav",
+                },
+                {
+                    "name": "natal-compass",
+                    "file": "src/components/NatalCompass.tsx",
+                    "purpose": "3D natal chart — the heart of the product",
+                    "view": "component",
+                    "rank": 2,
+                    "anchor": "natal-compass",
+                },
+                {
+                    "name": "transit-feed",
+                    "file": "src/components/TransitFeed.tsx",
+                    "purpose": "Real-time transit updates",
+                    "view": "component",
+                    "rank": 3,
+                    "anchor": "transit-feed",
+                },
+            ],
+            "anchor_readiness": {"readiness": "ready", "risk_flags": []},
+            "product_summary": "An astrology webapp.",
+            "audience": "b2c",
+        }
+
+    def test_3_stop_plan_aha_is_first_step(self):
+        """<= 3 stops → aha-moment surface must be step 1 (aha-first rule)."""
+        plan = self._build_plan_3_stops()
+        aha_anchor = plan["aha_moment"]["surface"]
+        result = emit_module(plan)
+        steps_content = _get_steps_file(result)
+
+        # Find the first data-tour selector occurrence
         first_selector_pos = steps_content.find("data-tour=")
         aha_pos = steps_content.find(aha_anchor)
-        assert aha_pos <= first_selector_pos + 100, (
-            f"Aha moment should appear near the first step.\n"
-            f"first_selector at {first_selector_pos}, aha at {aha_pos}.\n{steps_content[:800]}"
+
+        assert aha_pos != -1, f"Aha anchor '{aha_anchor}' not in steps."
+        assert aha_pos <= first_selector_pos + 150, (
+            f"3-stop plan: aha-moment should be step 1 (aha-first rule).\n"
+            f"first_selector at {first_selector_pos}, aha at {aha_pos}.\n"
+            f"{steps_content[:800]}"
+        )
+
+    # -----------------------------------------------------------------------
+    # 4-5 stops → orientation-first, aha NEAR THE END
+    # -----------------------------------------------------------------------
+
+    def test_4_stop_plan_aha_is_not_first_step(self):
+        """
+        4-stop plan → orientation-first arc. Aha-moment must NOT be step 1.
+        The rank-1 orientation stop should be first; aha near the end.
+        """
+        plan = _build_plan_4_stops()
+        aha_anchor = plan["aha_moment"]["surface"]  # "project-dashboard" at rank 1
+
+        # Make rank-1 NOT the aha-moment to test the reordering
+        # The plan already has aha=project-dashboard and rank-1=project-dashboard,
+        # so let's swap: set aha to a lower-ranked stop.
+        plan["aha_moment"] = {"surface": "activity-feed", "reason": "The aha moment"}
+        aha_anchor = "activity-feed"
+
+        result = emit_module(plan)
+        steps_content = _get_steps_file(result)
+
+        # The first data-tour selector should NOT be the aha stop
+        first_data_tour_line = ""
+        for line in steps_content.splitlines():
+            if "data-tour=" in line:
+                first_data_tour_line = line
+                break
+
+        assert aha_anchor not in first_data_tour_line, (
+            f"4-stop plan: aha-moment must not be step 1 (orientation-first rule).\n"
+            f"First selector line: {first_data_tour_line!r}\nFull steps:\n{steps_content[:800]}"
+        )
+
+        # Aha must still appear somewhere (just not first)
+        assert aha_anchor in steps_content, (
+            f"Aha anchor '{aha_anchor}' must still appear in the steps."
+        )
+
+    def test_5_stop_plan_aha_near_end(self):
+        """
+        5-stop plan (after D1 cap) → aha-moment near the end.
+        Celestia3 case: 6 stops capped to 5, NatalCompass (aha) should be
+        near the last position, not step 1.
+        """
+        plan = {
+            "schema_version": 1,
+            "app_path": "/projects/celestia3",
+            "mode": "walkthrough",
+            "trigger_model": "auto-once-replay",
+            "first_login_overlays": [],
+            "substrate": "driver.js",
+            "anchor_attr": "data-tour",
+            "substrate_reason": "Default.",
+            "substrate_overridden": False,
+            "driver_js_version": None,
+            "aha_moment": {
+                "surface": "natal-compass",
+                "reason": "3D natal chart — the heart of Celestia.",
+            },
+            "primary_user_role": "single",
+            "two_tour_branching": False,
+            "ranked_shortlist": [
+                {"name": "sidebar-nav", "rank": 1, "anchor": "sidebar-nav",
+                 "purpose": "Navigation", "file": "src/Sidebar.tsx", "view": "component"},
+                {"name": "dashboard-shell", "rank": 2, "anchor": "dashboard-shell",
+                 "purpose": "Main shell", "file": "src/Dashboard.tsx", "view": "page"},
+                {"name": "transit-feed", "rank": 3, "anchor": "transit-feed",
+                 "purpose": "Transit updates", "file": "src/TransitFeed.tsx", "view": "component"},
+                {"name": "natal-compass", "rank": 4, "anchor": "natal-compass",
+                 "purpose": "3D natal chart", "file": "src/NatalCompass.tsx", "view": "component"},
+                {"name": "tarot-deck", "rank": 5, "anchor": "tarot-deck",
+                 "purpose": "Tarot readings", "file": "src/TarotDeck.tsx", "view": "component"},
+            ],
+            "anchor_readiness": {"readiness": "needs-pass", "risk_flags": []},
+            "product_summary": "Celestia3 astrology webapp.",
+            "audience": "b2c",
+        }
+        aha_anchor = "natal-compass"
+        result = emit_module(plan)
+        steps_content = _get_steps_file(result)
+
+        # Collect all selector lines in order
+        selector_lines = [
+            line.strip() for line in steps_content.splitlines()
+            if "data-tour=" in line
+        ]
+        assert len(selector_lines) == 5, f"Expected 5 steps. Got {len(selector_lines)}."
+
+        # The first selector must NOT be the aha stop
+        assert aha_anchor not in selector_lines[0], (
+            f"5-stop plan: aha-moment should NOT be step 1 (orientation-first). "
+            f"First step: {selector_lines[0]!r}"
+        )
+        # The aha stop should appear in the last half (positions 3-5 for a 5-stop tour)
+        aha_position = next(
+            (i for i, line in enumerate(selector_lines) if aha_anchor in line), None
+        )
+        assert aha_position is not None, f"'{aha_anchor}' not found in steps."
+        assert aha_position >= 2, (
+            f"5-stop plan: aha should appear at position 3+ (0-indexed 2+), "
+            f"got position {aha_position}. Steps: {selector_lines}"
         )
 
 
