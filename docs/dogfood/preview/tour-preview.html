@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vibe-Walk generated tour — Celestia3 preview</title>
+<link rel="stylesheet" href="https://esm.sh/driver.js@1.4.0/dist/driver.css">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: 'Segoe UI', system-ui, sans-serif;
+    background: radial-gradient(1200px 800px at 70% -10%, #1a1640 0%, #0b0a1a 55%, #060510 100%);
+    color: #ece8ff; min-height: 100vh; display: flex;
+  }
+  /* Sidebar */
+  nav#sidebar { width: 230px; flex-shrink: 0; padding: 20px 14px; border-right: 1px solid rgba(212,175,55,.18);
+    background: rgba(13,12,30,.6); backdrop-filter: blur(8px); }
+  .brand { font-weight: 700; letter-spacing: .22em; font-size: 15px; color: #d4af37; margin: 4px 8px 22px; }
+  .navitem { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; font-size: 14px;
+    color: #c9c4e8; margin-bottom: 4px; }
+  .navitem.active { background: rgba(212,175,55,.14); color: #fff; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #7c6cf0; }
+  /* Main */
+  main { flex: 1; padding: 0 28px 28px; }
+  header.bar { display: flex; align-items: center; justify-content: space-between; padding: 18px 4px 22px; }
+  .title { font-size: 20px; font-weight: 600; }
+  .xp { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .xpbar { width: 180px; height: 8px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
+  .xpfill { width: 62%; height: 100%; background: linear-gradient(90deg,#7c6cf0,#d4af37); }
+  .lvl { font-size: 11px; color: #b9b2e6; letter-spacing: .08em; text-transform: uppercase; }
+  .pulse { background: linear-gradient(100deg, rgba(49,46,129,.5), rgba(15,23,42,.5)); border: 1px solid rgba(124,108,240,.25);
+    border-radius: 16px; padding: 18px 20px; margin-bottom: 22px; }
+  .pulse h3 { margin: 0 0 6px; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #b9b2e6; }
+  .pulse p { margin: 0; font-size: 15px; }
+  .numgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 26px; }
+  .numcard { background: rgba(20,18,42,.7); border: 1px solid rgba(212,175,55,.18); border-radius: 14px; padding: 18px; text-align: center; }
+  .numcard .n { font-size: 30px; font-weight: 700; color: #d4af37; }
+  .numcard .l { font-size: 12px; color: #b9b2e6; text-transform: uppercase; letter-spacing: .1em; margin-top: 6px; }
+  .chartwrap { position: relative; width: 100%; max-width: 460px; aspect-ratio: 1/1; margin: 8px auto 0; }
+  .chart { position: absolute; inset: 0; border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, rgba(124,108,240,.18), rgba(11,10,26,.2) 70%);
+    border: 1px solid rgba(212,175,55,.35); box-shadow: 0 0 60px rgba(124,108,240,.25) inset; }
+  .chart::before { content:''; position:absolute; inset:18%; border-radius:50%; border:1px dashed rgba(212,175,55,.3); }
+  .chart::after { content:''; position:absolute; inset:38%; border-radius:50%; border:1px solid rgba(124,108,240,.4); }
+  .planet { position:absolute; width:14px; height:14px; border-radius:50%; background:#d4af37; box-shadow:0 0 12px #d4af37; }
+  /* Cosmic popover theme (matches the plugin's celestia3-spotlight popoverClass) */
+  .driver-popover.celestia3-spotlight { background: rgba(13,12,30,.95); backdrop-filter: blur(12px);
+    border: 1px solid rgba(212,175,55,.45); border-radius: 14px; color: #ece8ff; box-shadow: 0 8px 40px rgba(0,0,0,.55); }
+  .driver-popover.celestia3-spotlight .driver-popover-title { color: #d4af37; font-weight: 600; }
+  .driver-popover.celestia3-spotlight .driver-popover-description { color: #c9c4e8; }
+  .driver-popover.celestia3-spotlight .driver-popover-progress-text { color: #8f88b8; }
+  .driver-popover.celestia3-spotlight button { background: rgba(212,175,55,.16); color: #ece8ff;
+    border: 1px solid rgba(212,175,55,.35); border-radius: 8px; text-shadow: none; }
+  .driver-popover.celestia3-spotlight .driver-popover-arrow { border-color: rgba(13,12,30,.95); }
+</style>
+</head>
+<body>
+  <nav id="sidebar" data-tour="sidebar-nav">
+    <div class="brand">CELESTIA</div>
+    <div class="navitem active"><span class="dot"></span> Natal Compass</div>
+    <div class="navitem"><span class="dot"></span> Aura Cam</div>
+    <div class="navitem"><span class="dot"></span> Arithmancy</div>
+    <div class="navitem"><span class="dot"></span> Tarot</div>
+    <div class="navitem"><span class="dot"></span> Rituals</div>
+    <div class="navitem"><span class="dot"></span> Synastry</div>
+    <div class="navitem"><span class="dot"></span> Grimoire</div>
+  </nav>
+  <main>
+    <header class="bar">
+      <div class="title">Welcome back, Traveler</div>
+      <div class="xp" data-tour="progression-bar">
+        <div class="lvl">Level 7 — Seeker</div>
+        <div class="xpbar"><div class="xpfill"></div></div>
+      </div>
+    </header>
+    <div class="pulse" data-tour="daily-pulse">
+      <h3>Daily Pulse</h3>
+      <p>Today resonates with a 5 — movement, change, and a focus color of deep indigo.</p>
+    </div>
+    <div class="numgrid" data-tour="numerology-cards">
+      <div class="numcard"><div class="n">3</div><div class="l">Life Path</div></div>
+      <div class="numcard"><div class="n">8</div><div class="l">Destiny</div></div>
+      <div class="numcard"><div class="n">5</div><div class="l">Active</div></div>
+    </div>
+    <div class="chartwrap" data-tour="natal-chart">
+      <div class="chart">
+        <div class="planet" style="top:8%;left:48%"></div>
+        <div class="planet" style="top:46%;left:90%"></div>
+        <div class="planet" style="top:88%;left:52%"></div>
+        <div class="planet" style="top:46%;left:6%"></div>
+        <div class="planet" style="top:24%;left:78%"></div>
+      </div>
+    </div>
+  </main>
+
+<script type="module">
+  import { driver } from 'https://esm.sh/driver.js@1.4.0';
+
+  // === EXACT generated SPOTLIGHT_STEPS from vibe-walk (celestia3-output) ===
+  const SPOTLIGHT_STEPS = [
+    { element: '[data-tour="sidebar-nav"]', popover: { title: 'Sidebar nav', description: 'Every feature lives here — your chart, tarot, rituals, and more', side: 'right', align: 'start' } },
+    { element: '[data-tour="progression-bar"]', popover: { title: 'Progression bar', description: 'Explore to earn XP. Leveling unlocks the Adept and Archon tools', side: 'bottom', align: 'center' } },
+    { element: '[data-tour="daily-pulse"]', popover: { title: 'Daily pulse', description: 'A fresh numerology focus for today — a new one every day', side: 'top', align: 'center' } },
+    { element: '[data-tour="numerology-cards"]', popover: { title: 'Numerology cards', description: "Life Path, Destiny, and today's active number. Tap any for the deep dive", side: 'top', align: 'center' } },
+    { element: '[data-tour="natal-chart"]', popover: { title: 'NatalCompass', description: 'Your sky at birth, in 3D. Hover planets and inspect aspects — the heart of Celestia', side: 'left', align: 'center' } },
+  ];
+
+  const tour = driver({
+    showProgress: true,
+    showButtons: ['next', 'previous', 'close'],
+    popoverClass: 'celestia3-spotlight',
+    steps: SPOTLIGHT_STEPS,
+  });
+  window.__tour = tour;          // expose for Playwright step control
+  window.__steps = SPOTLIGHT_STEPS;
+  tour.drive();                  // start at step 1
+</script>
+</body>
+</html>
