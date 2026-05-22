@@ -1,6 +1,6 @@
 ---
 name: walk
-description: "Phase 1.5 interview gates + Phase 2 tour generator for vibe-walk. Reads .vibe-walk/discovery.json, resolves the tour substrate via the decision tree (substrate_tree.py), runs five interview gates, writes .vibe-walk/build-plan.json, then orchestrates three Phase 2 steps: anchor injection (M4), tour module emission (M3), and analytics wiring (M5)."
+description: "Phase 1.5 interview gates + Phase 2 tour generator for vibe-walk. Reads .vibe-walk/discovery.json, resolves the tour substrate via the decision tree (substrate_tree.py), runs five interview gates, writes .vibe-walk/build-plan.json, then orchestrates four Phase 2 steps: anchor injection (M4), tour module emission (M3), analytics wiring (M5), and trigger wiring (M7)."
 ---
 
 # /vibe-walk:walk — Phase 1.5 interview gates + Phase 2 tour generator
@@ -11,7 +11,7 @@ Read [`../guide/SKILL.md`](../guide/SKILL.md) for the Sherpa persona, posture, a
 
 Phase 1.5 is the interview between discovery and build. Five gates. The substrate decision tree runs before any question is asked — never ask what the tree already answers. Ask only to confirm the tree's resolution or to resolve an explicit override condition.
 
-At the end of the five gates, the resolved answers land in `.vibe-walk/build-plan.json`. **Phase 2 runs three steps in sequence:** anchor injection (M4) → tour module emission (M3) → analytics wiring (M5). There is one human gate between step 1 and step 2: if the anchor codemod routes any stop to `REVIEW_NEEDED.md`, the build halts there until the builder resolves that list. Steps 2 and 3 run without further interruption once the anchor pass is clean.
+At the end of the five gates, the resolved answers land in `.vibe-walk/build-plan.json`. **Phase 2 runs four steps in sequence:** anchor injection (M4) → tour module emission (M3) → analytics wiring (M5) → trigger wiring (M7). There is one automated human gate between step 1 and step 2: if the anchor codemod routes any stop to `REVIEW_NEEDED.md`, the build halts there until the builder resolves that list. Steps 2, 3, and 4 run without further interruption once the anchor pass is clean. Step 4 produces a `WIRING.md` placement guide; the builder applies the auto-fire effect and replay control to their main component — the one human gate in step 4.
 
 ```
 read discovery.json
@@ -30,6 +30,11 @@ read discovery.json
             → surface D1 cap warnings
         → Phase 2, step 3: emit_analytics.emit_analytics(build_plan) (M5)
             → write tourAnalytics.ts + TOUR_ANALYTICS.md to app tour directory
+        → Phase 2, step 4: emit_trigger_wiring.emit_trigger_wiring(build_plan, host_signals) (M7)
+            → assemble host_signals (framework, first_run_flag_system, main_component, existing_overlays)
+            → write WIRING.md to app tour directory
+            → apply safe snippets (flag extension where possible)
+            → present wiring guide → builder applies effect + replay (human gate)
               → hand off (Phase 2 complete)
 ```
 
@@ -357,7 +362,7 @@ Write to `.vibe-walk/build-plan.json` (create `.vibe-walk/` if absent):
 
 ### 7. Invoke Phase 2
 
-Phase 2 runs three steps in the fixed order below. **Do not skip or reorder.**
+Phase 2 runs four steps in the fixed order below. **Do not skip or reorder.**
 
 #### Step 1 — Anchor injection (M4)
 
@@ -427,6 +432,61 @@ for rel_path, contents in analytics_result["files"].items():
 
 Merges into the same tour directory as step 2. `tourAnalytics.ts` is designed to import cleanly alongside `spotlightTour.ts` — the wiring guide in `TOUR_ANALYTICS.md` covers the integration.
 
+#### Step 4 — Wire the trigger (M7)
+
+Assemble `host_signals` from discovery context and any signals gathered during Phase 1 / Phase 1.5:
+
+```python
+host_signals = {
+    "framework":             _infer_framework(app_path),   # reuse from step 2 signal inference
+    "first_run_flag_system": _detect_first_run_flag_system(app_path),
+    "main_component":        _detect_main_component(app_path),
+    "existing_overlays":     build_plan.get("first_login_overlays", []),
+}
+```
+
+**`_detect_first_run_flag_system(app_path)`** — scan for preferences/settings/prefs files that contain boolean flags with names matching `*seen*`, `*onboard*`, `*welcome*`, `*intro*`:
+- Look in `src/hooks/`, `src/store/`, `src/context/`, `src/lib/`, `src/utils/` for files named `*pref*`, `*setting*`, `*user*`, `*onboard*`.
+- If found: return `{"file": <rel_path>, "existing_flags": [<list of flag names>]}`.
+- If not found: return `None` (triggers localStorage fallback + warning in the emitter).
+
+**`_detect_main_component(app_path)`** — identify the main authenticated/dashboard component:
+- For Next.js: `src/app/(authenticated)/page.tsx`, `src/app/dashboard/page.tsx`, or the layout file one level below the root.
+- For React SPA: look for `Dashboard.tsx`, `Home.tsx`, `App.tsx` in `src/pages/` or `src/views/`.
+- Return `{"file": <rel_path>, "name": <component_name>}` or `None`.
+
+```python
+from build.emit_trigger_wiring import emit_trigger_wiring
+
+wiring_result = emit_trigger_wiring(build_plan, host_signals)
+
+for w in wiring_result["warnings"]:
+    print(f"  {w}")
+
+# Write WIRING.md to the app's tour directory alongside the other Phase 2 files
+for rel_path, contents in wiring_result["files"].items():
+    write_to_app_tour_dir(app_path, rel_path, contents)
+```
+
+**Apply safe snippets:** if `host_signals["first_run_flag_system"]` was detected and its file is unambiguously a preferences/hook file (not a class component or utility with mixed concerns), apply the flag addition automatically as an additive edit. Otherwise present it to the builder as a snippet to apply manually.
+
+**Human gate — present the wiring guide:**
+
+```
+Trigger wiring: WIRING.md written to <app_path>/src/components/tour/WIRING.md.
+
+The plugin has generated exact snippets for the three trigger wiring steps:
+  1. Flag addition — extend <flag_file> with hasSeenSpotlight (sibling to <existing_flag>).
+  2. Auto-fire effect — place the useEffect in <main_component> (<comp_file>).
+  3. Replay control — add the "Take the Tour" button to your help menu or nav.
+
+Open WIRING.md for exact placement instructions and the snippets to apply.
+This is the one remaining human step — the plugin cannot safely auto-edit
+your main component.
+```
+
+Surface any `wiring_result["warnings"]` (e.g., no flag system detected, no main component found) before presenting the guide.
+
 ### 8. Hand-off message
 
 ```
@@ -447,15 +507,21 @@ Files written:
   spotlightSteps.ts  — <N>-stop DriveStep[] array, data-tour anchors
   spotlightTour.ts   — driver() runner, showProgress, SSR guard, replay export
   tourAnalytics.ts   — 6-event analytics adapter (replace the stub with your provider)
-  TOUR_ANALYTICS.md  — event schema, attribution windows, wiring guide
+  TOUR_ANALYTICS.md  — event schema, attribution windows, analytics wiring guide
+  WIRING.md          — trigger wiring guide: flag, auto-fire effect, replay placement
 
 <if warnings>
 Notes:
   <warnings listed here>
 </if>
 
-Next: open TOUR_ANALYTICS.md and replace the trackTourEvent stub with your
-analytics provider call. That's the only remaining wiring step.
+Next: open WIRING.md and follow the three steps to complete trigger wiring:
+  1. Add hasSeenSpotlight to <flag_file> (sibling to your existing flags).
+  2. Place the auto-fire useEffect in <main_component> (<comp_file>).
+  3. Add the "Take the Tour" replay button to your help menu or nav.
+
+Also open TOUR_ANALYTICS.md and replace the trackTourEvent stub with your
+analytics provider call.
 ```
 
 ### 9. Friction-logger triggers summary
@@ -477,8 +543,9 @@ Invoke `session-logger.end()` with:
 - `key_decisions`: `["substrate: <X>", "trigger: <Y>", "aha: <surface>", "role: <Z>"]`
 - `user_pushback`: `true` if the builder overrode the substrate or aha candidate
 - `friction_notes`: array of any friction signals captured this run
-- `tour_built`: `true` (Phase 2 complete — anchors injected, module emitted, analytics wired)
+- `tour_built`: `true` (Phase 2 complete — anchors injected, module emitted, analytics wired, trigger wiring generated)
 - `anchor_review_needed`: `true` if the build halted at REVIEW_NEEDED, `false` if fully clean
+- `trigger_wiring_warnings`: array of any warnings from emit_trigger_wiring (e.g., no flag system detected)
 
 ## Hard rules
 
@@ -489,7 +556,9 @@ Invoke `session-logger.end()` with:
 - **The build plan is authoritative.** All three Phase 2 steps read from it. Write it completely before invoking any Phase 2 step.
 - **REVIEW_NEEDED halts the build.** Never proceed to step 2 (module emission) if step 1 (anchor injection) produced any review entries. The halt is the contract.
 - **D1 is enforced by the emitter.** If emit_module returns warnings, surface them to the builder before presenting the hand-off.
-- **Phase 2 order is fixed: anchors → module → analytics.** Never reorder. Never skip. Analytics (M5) runs unconditionally after module emission — it completes in the same session.
+- **Phase 2 order is fixed: anchors → module → analytics → trigger wiring.** Never reorder. Never skip. Analytics (M5) and trigger wiring (M7) both run unconditionally after module emission — they complete in the same session.
+- **Never invent a parallel first-run store.** emit_trigger_wiring extends the host's existing onboarding-state system. If none is detected, it emits a localStorage fallback and a warning — present that warning to the builder.
+- **The trigger wiring human gate is placement, not approval.** WIRING.md contains exact snippets; the builder's only job is placing them in the right files. Don't re-ask for approval of the trigger model (that was Gate 2).
 
 ## Cross-references
 
@@ -498,6 +567,7 @@ Invoke `session-logger.end()` with:
 - Anchor codemod: `../../scripts/anchors/inject_anchors.js` (M4)
 - Tour module emitter: `../../scripts/build/emit_tour_module.py` (M3)
 - Analytics emitter: `../../scripts/build/emit_analytics.py` (M5)
+- Trigger wiring emitter: `../../scripts/build/emit_trigger_wiring.py` (M7)
 - Session logger: [`../session-logger/SKILL.md`](../session-logger/SKILL.md)
 - Friction logger: [`../friction-logger/SKILL.md`](../friction-logger/SKILL.md)
 - Discovery output: `.vibe-walk/discovery.json` (Phase 1 input)
