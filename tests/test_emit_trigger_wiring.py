@@ -157,6 +157,13 @@ class TestReturnShape:
         )
         assert "replay" in result["snippets"]
 
+    def test_has_permalink_snippet(self):
+        result = emit_trigger_wiring(
+            _build_plan_with_overlays(), _host_signals_with_flag_system()
+        )
+        assert "permalink" in result["snippets"]
+        assert result["snippets"]["permalink"], "permalink snippet must not be empty"
+
 
 # ---------------------------------------------------------------------------
 # Flag snippet — extends existing system (no parallel store)
@@ -411,6 +418,116 @@ class TestReplaySnippet:
 
 
 # ---------------------------------------------------------------------------
+# Permalink snippet — URL-triggered tour entry
+# ---------------------------------------------------------------------------
+
+class TestPermalinkSnippet:
+    """
+    The permalink snippet must:
+      - Read a ?tour URL param via URLSearchParams (or window.location.search)
+      - Call startSpotlightTour() when the param is present
+      - Bypass the hasSeenSpotlight flag (user explicitly opted in via URL)
+      - NOT set the flag after firing (link is reusable)
+      - Still honor overlay-sequencing
+      - Clean the URL param after firing so refresh doesn't loop
+      - Guard SSR (typeof window === 'undefined' check)
+    """
+
+    def _permalink_snippet(self, build_plan=None, host_signals=None) -> str:
+        bp = build_plan or _build_plan_with_overlays()
+        hs = host_signals or _host_signals_with_flag_system()
+        result = emit_trigger_wiring(bp, hs)
+        return result["snippets"]["permalink"]
+
+    def test_uses_react_useEffect(self):
+        snippet = self._permalink_snippet()
+        assert "useEffect" in snippet, (
+            "permalink must use React useEffect to fire on mount"
+        )
+
+    def test_reads_url_search_param(self):
+        snippet = self._permalink_snippet()
+        # Accept URLSearchParams or window.location.search reading patterns
+        patterns = ["URLSearchParams", "window.location.search", "location.search"]
+        found = any(p in snippet for p in patterns)
+        assert found, (
+            f"permalink must read URL params (URLSearchParams). Snippet:\n{snippet}"
+        )
+
+    def test_checks_tour_param(self):
+        snippet = self._permalink_snippet()
+        # Must reference the `tour` param name
+        patterns = ["'tour'", '"tour"', "params.has('tour')", 'params.has("tour")']
+        found = any(p in snippet for p in patterns)
+        assert found, (
+            f"permalink must check for the 'tour' URL param. Snippet:\n{snippet}"
+        )
+
+    def test_calls_startSpotlightTour(self):
+        snippet = self._permalink_snippet()
+        assert "startSpotlightTour" in snippet, (
+            "permalink must call startSpotlightTour when ?tour is present"
+        )
+
+    def test_does_not_set_flag(self):
+        """
+        Permalink must NOT call setHasSeenSpotlight — the link should be reusable.
+        Auto-fire owns the flag; permalink is a separate opt-in path.
+        """
+        snippet = self._permalink_snippet()
+        flag_setter_patterns = ["setHasSeenSpotlight", "setHasSeen", "setSpotlightSeen"]
+        found = any(p in snippet for p in flag_setter_patterns)
+        assert not found, (
+            "permalink must NOT set the hasSeenSpotlight flag — link must remain reusable"
+        )
+
+    def test_ssr_guard_present(self):
+        """Permalink reads window.location — must guard against SSR."""
+        snippet = self._permalink_snippet()
+        ssr_patterns = [
+            "typeof window === 'undefined'",
+            'typeof window === "undefined"',
+            "typeof window !== 'undefined'",
+            'typeof window !== "undefined"',
+            "if (typeof window",
+        ]
+        found = any(p in snippet for p in ssr_patterns)
+        assert found, (
+            f"permalink must guard against SSR (typeof window check). Snippet:\n{snippet}"
+        )
+
+    def test_cleans_url_after_firing(self):
+        """Permalink must clean the ?tour param after firing so refresh doesn't loop."""
+        snippet = self._permalink_snippet()
+        cleanup_patterns = [
+            "history.replaceState",
+            "history.pushState",
+            "params.delete",
+        ]
+        # Must show URL mutation after firing
+        found = any(p in snippet for p in cleanup_patterns)
+        assert found, (
+            f"permalink must clean the URL param after firing (history.replaceState or "
+            f"params.delete). Snippet:\n{snippet}"
+        )
+
+    def test_overlay_gate_still_present(self):
+        """Permalink honors overlay-sequencing — must reference the overlay or onboarding gate."""
+        snippet = self._permalink_snippet()
+        gate_patterns = [
+            "welcomeModal",
+            "WelcomeModal",
+            "isOnboardingComplete",
+            "onboardingComplete",
+        ]
+        found = any(p.lower() in snippet.lower() for p in gate_patterns)
+        assert found, (
+            f"permalink must gate on overlay-dismissed even when URL-triggered. "
+            f"Snippet:\n{snippet}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # WIRING.md — precision placement guide
 # ---------------------------------------------------------------------------
 
@@ -462,6 +579,15 @@ class TestWiringMd:
         found = any(p.lower() in md.lower() for p in replay_placement_patterns)
         assert found, (
             "WIRING.md must mention where to add the replay control"
+        )
+
+    def test_permalink_placement_mentioned(self):
+        """WIRING.md must mention the permalink trigger step."""
+        md = self._wiring_md()
+        permalink_patterns = ["permalink", "?tour", "URL param"]
+        found = any(p.lower() in md.lower() for p in permalink_patterns)
+        assert found, (
+            f"WIRING.md must mention the permalink trigger step. Got:\n{md[:500]}..."
         )
 
     def test_wiring_md_is_not_empty(self):
@@ -588,3 +714,17 @@ class TestOnDemandTriggerModel:
         )
         assert "replay" in result["snippets"]
         assert result["snippets"]["replay"]
+
+    def test_permalink_present_for_on_demand(self):
+        """
+        Permalink is a third opt-in entry point and works regardless of trigger
+        model. On-demand should still emit the permalink snippet.
+        """
+        result = emit_trigger_wiring(
+            self._build_plan_on_demand(), _host_signals_with_flag_system()
+        )
+        assert "permalink" in result["snippets"]
+        assert result["snippets"]["permalink"], (
+            "permalink must be emitted for on-demand trigger model too"
+        )
+        assert "startSpotlightTour" in result["snippets"]["permalink"]
