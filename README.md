@@ -67,7 +67,7 @@ After the five gates, the plugin builds:
 |---|---|
 | `/vibe-walk` | Bare router — reads project state, recommends the next step, asks before launching. First run hands off to bootstrap. |
 | `/vibe-walk:discover` | Phase 1 autonomous discovery + the build/don't-build verdict. |
-| `/vibe-walk:walk` | Phase 1.5 interview gates + Phase 2 build. Requires a `build` verdict from discover. |
+| `/vibe-walk:walk` | Phase 1.5 interview gates + Phase 2 build. Reads the discovery verdict; on non-`build` verdicts, surfaces the read and asks once before proceeding — advisory, not gating. |
 | `/vibe-walk:vitals` | Structural self-test — checks plugin.json, all nine SKILLs, all scripts, guide references, and friction-trigger wiring. Read-only. |
 | `/vibe-walk:evolve-walk` | L3 self-evolution — reads session + friction logs and proposes improvements to the plugin. Never auto-applies. |
 

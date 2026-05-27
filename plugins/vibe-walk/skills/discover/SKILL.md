@@ -187,7 +187,10 @@ train users to dismiss future guidance.
 
 Next options:
   - Address the blocking condition(s) above, then re-run /vibe-walk:discover --refresh.
-  - Or accept the verdict and invest elsewhere.
+  - Accept the verdict and invest elsewhere.
+  - Or override — run /vibe-walk:walk anyway. The verdict is advisory; the walk
+    SKILL will surface these reasons and ask once before proceeding. Your read
+    on the app beats the plugin's heuristic when you have context the plugin lacks.
 ```
 
 #### Format — "cheaper-first"
@@ -201,18 +204,21 @@ Recommended: add empty-state design or sample-data seeding before building a tou
 The blank-canvas first-run problem (Linear/Supabase pattern) has higher ROI than
 a spotlight tour when users have nothing to react to yet.
 
-Once the first-run experience is populated, re-run /vibe-walk:discover --refresh
-to get a fresh verdict.
+Next options:
+  - Implement the cheaper move first, then re-run /vibe-walk:discover --refresh.
+  - Or override — run /vibe-walk:walk anyway. The walk SKILL will surface this
+    verdict and ask once before proceeding. Useful when the cheaper move is
+    out of scope or you've already planned it as a follow-up.
 ```
 
 ### 10. Friction-logger triggers
 
 Invoke `friction-logger.log()` if:
 
-- **Builder overrides the verdict** (e.g., "I know it says don't-build, but let's build anyway"):
+- **Builder overrides the verdict** (e.g., on `don't-build` or `cheaper-first`, chooses to proceed via `/vibe-walk:walk`):
   - `friction_type: "verdict_overridden"`, `confidence: "high"`
   - `symptom`: "Agent verdict was <X>, builder chose to proceed with build."
-  - This is the **highest-signal friction event** in the plugin — the differentiator being ignored.
+  - This is the **highest-signal friction event** in the plugin. The verdict is advisory — overrides are legitimate, not failures. The signal exists so `/vibe-walk:evolve-walk` can track whether overrides correlate with successful or failed tours over time and tune the verdict's signal weights accordingly.
 
 - **Builder rejects the ranked shortlist wholesale** ("none of these stops are right"):
   - `friction_type: "shortlist_rejected"`, `confidence: "medium"`

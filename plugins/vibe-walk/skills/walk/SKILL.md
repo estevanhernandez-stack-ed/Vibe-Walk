@@ -40,12 +40,25 @@ read discovery.json
 
 ## Prerequisites
 
-This command requires a `build` verdict from Phase 1. On entry:
+This command reads the discovery verdict to inform the builder, but does **not** gate the build on it. The verdict is advisory — discovery surfaces honest evidence, and the builder decides whether to proceed. On entry:
 
 1. Read `.vibe-walk/discovery.json`.
 2. If absent → tell the builder to run `/vibe-walk:discover` first.
-3. If `verdict != "build"` → surface the verdict and its reasons, and explain that Phase 1.5 runs only on a `build` verdict. Offer to re-run discovery.
-4. If `build` → proceed.
+3. If `verdict == "build"` → proceed immediately.
+4. If `verdict != "build"` (`don't-build` or `cheaper-first`) → surface the verdict + its reasons, then ask **once**:
+
+   ```
+   Discovery returned `<verdict>`: <one-line summary of reasons>.
+
+   The plugin's read is that <building a tour here is weak | a cheaper move
+   has higher ROI first>. You can still proceed — your judgment on the app
+   beats the plugin's heuristic. Proceed anyway? (y/N — default N)
+   ```
+
+   - If `y` → proceed with the build. Tag the override in `build-plan.json` (`verdict_overridden: true` + carry the original verdict in `verdict`). Fire the `verdict_overridden` friction signal per [`../guide/references/friction-triggers.md`](../guide/references/friction-triggers.md).
+   - If `N` → exit cleanly. Offer `/vibe-walk:discover --refresh` if the app state has changed since the original discovery run.
+
+The "earn the tour" framing remains the trust spine — discovery still calls each case honestly, and a non-`build` verdict is still a first-class output worth presenting. The builder's override doesn't lessen the verdict; it just acknowledges that one signal isn't dispositive. The friction signal exists so [`/vibe-walk:evolve-walk`](../evolve-walk/SKILL.md) can track whether overrides correlate with successful or failed tours over time and tune the verdict's signal weights.
 
 ## Execution procedure
 
@@ -341,6 +354,8 @@ Write to `.vibe-walk/build-plan.json` (create `.vibe-walk/` if absent):
   "schema_version": 1,
   "timestamp": "<ISO 8601>",
   "app_path": "<from discovery.json>",
+  "verdict": "<carried from discovery.json — build | don't-build | cheaper-first>",
+  "verdict_overridden": false,
   "mode": "walkthrough",
   "trigger_model": "<auto-once-replay | on-demand | auto-once-no-replay>",
   "first_login_overlays": ["<list from Gate 2 sub-q, or []>"],
@@ -539,9 +554,10 @@ For `/vibe-walk:walk`, fire `friction-logger.log()` when:
 Invoke `session-logger.end()` with:
 - `sessionUUID` from step 1
 - `outcome`: `"completed"` | `"abandoned"` | `"error"`
-- `verdict`: `"build"` (carried; always build by this point)
+- `verdict`: carried from discovery — `"build"`, `"don't-build"`, or `"cheaper-first"`. Non-`build` values indicate the builder overrode an advisory verdict to proceed.
+- `verdict_overridden`: `true` if the discovery verdict was non-`build` and the builder confirmed at the Prerequisites prompt; `false` otherwise.
 - `key_decisions`: `["substrate: <X>", "trigger: <Y>", "aha: <surface>", "role: <Z>"]`
-- `user_pushback`: `true` if the builder overrode the substrate or aha candidate
+- `user_pushback`: `true` if the builder overrode the substrate, the aha candidate, OR the discovery verdict.
 - `friction_notes`: array of any friction signals captured this run
 - `tour_built`: `true` (Phase 2 complete — anchors injected, module emitted, analytics wired, trigger wiring generated)
 - `anchor_review_needed`: `true` if the build halted at REVIEW_NEEDED, `false` if fully clean
@@ -549,6 +565,7 @@ Invoke `session-logger.end()` with:
 
 ## Hard rules
 
+- **The discovery verdict is advisory, not gating.** On non-`build` verdicts (`don't-build`, `cheaper-first`), surface the verdict + reasons and ask **once** before proceeding. Don't refuse to proceed; the builder owns the call. Tag any override in `build-plan.json` (`verdict_overridden: true`) and fire the `verdict_overridden` friction signal so [`/vibe-walk:evolve-walk`](../evolve-walk/SKILL.md) can learn from it over time.
 - **Run substrate_tree before asking anything.** Never ask what the tree already answers.
 - **Never ask multiple gates at once.** Keep them sequential. Gate 2's sub-question is the only in-gate compound — and it fires immediately after Gate 2's main question.
 - **Intro.js is not available.** Reject any attempt to select it with a clear reason (AGPL-3).
