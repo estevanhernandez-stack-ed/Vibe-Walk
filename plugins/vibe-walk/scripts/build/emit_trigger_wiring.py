@@ -6,14 +6,14 @@ Pure function. No I/O. No side effects.
 emit_trigger_wiring(build_plan: dict, host_signals: dict) -> dict
   Returns {
     "files":       {"WIRING.md": "<contents>"},
-    "snippets":    {"flag": str, "auto_fire_effect": str, "replay": str},
+    "snippets":    {"flag": str, "auto_fire_effect": str, "replay": str, "permalink": str},
     "wiring_guide": str,   # mirror of WIRING.md content (convenience)
     "warnings":    [str],
   }
 
 Generates the trigger integration for the host's framework (React/Next first-class).
 
-Three wiring artifacts:
+Four wiring snippets:
 
   1. flag snippet
      Extends the host's existing onboarding-state system (from
@@ -32,10 +32,19 @@ Three wiring artifacts:
      A persistent, ungated <button onClick={replaySpotlightTour}> JSX control.
      No flag check. Fires any time the user wants a replay.
 
-  4. WIRING.md
+  4. permalink snippet
+     A sibling React useEffect that fires startSpotlightTour() when a
+     `?tour` URL param is present (e.g. /dashboard?tour=spotlight). Bypasses
+     the hasSeenSpotlight flag (the user explicitly opted in via the URL)
+     but still honors overlay-sequencing. Cleans the URL after firing so
+     a page refresh doesn't loop the trigger. SSR-safe.
+     Always emitted — works alongside both auto-once-replay and on-demand
+     trigger models as a third opt-in entry point.
+
+  5. WIRING.md
      Precise host-specific placement guide: which file to add the flag to,
      where to place the effect (the host's main authenticated/dashboard component),
-     where to add the replay control.
+     where to add the replay control, and where to add the permalink effect.
 
 host_signals keys:
   framework            (str)  — e.g. "react", "next-app-router", "react-spa"
@@ -133,7 +142,12 @@ def emit_trigger_wiring(build_plan: dict, host_signals: dict) -> dict:
     replay_snippet = _emit_replay_snippet()
 
     # -------------------------------------------------------------------------
-    # 4. WIRING.md
+    # 4. Permalink snippet
+    # -------------------------------------------------------------------------
+    permalink_snippet = _emit_permalink_snippet(all_overlays, framework)
+
+    # -------------------------------------------------------------------------
+    # 5. WIRING.md
     # -------------------------------------------------------------------------
     if main_component is None:
         warnings.append(
@@ -151,6 +165,7 @@ def emit_trigger_wiring(build_plan: dict, host_signals: dict) -> dict:
         "flag":             flag_snippet,
         "auto_fire_effect": auto_fire_snippet,
         "replay":           replay_snippet,
+        "permalink":        permalink_snippet,
     }
 
     return {
@@ -376,6 +391,68 @@ def _emit_replay_snippet() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Permalink snippet emitter
+# ---------------------------------------------------------------------------
+
+def _emit_permalink_snippet(overlays: list, framework: str) -> str:
+    """
+    Emit the permalink trigger useEffect snippet.
+
+    Fires startSpotlightTour() when a `?tour` URL param is present.
+    Bypasses the hasSeenSpotlight flag (the user explicitly opted in via
+    the URL) but still honors overlay-sequencing (don't stack on a welcome
+    modal). Cleans the URL after firing so a page refresh doesn't loop the
+    trigger.
+
+    Always emitted — works alongside both auto-once-replay and on-demand
+    trigger models as a third opt-in entry point.
+
+    Forward-compat: v1 fires on any `?tour=...` presence (single tour per app).
+    Future versions may match the value against tour names (training-mode v2).
+    """
+    overlay_gate = _overlay_gate_expression(overlays)
+    overlay_dep = _overlay_dep_name(overlays) if overlays else None
+
+    deps = ["isOnboardingComplete"]
+    if overlay_dep:
+        deps.append(overlay_dep)
+    dep_array = ", ".join(deps)
+
+    return f"""\
+// Permalink trigger — opens the tour when `?tour` is present in the URL.
+// Place alongside the auto-fire effect in your main authenticated component.
+// Sibling effect to auto_fire_effect; SSR-safe.
+//
+// Unlike auto-fire, this:
+//   - bypasses the hasSeenSpotlight flag (the user explicitly opted in via URL)
+//   - still honors overlay-sequencing (don't stack on a welcome modal)
+//   - does NOT set the flag after (so the link can be reused)
+//
+// Import startSpotlightTour from './spotlightTour'.
+// Forward-compat: v1 fires on any `?tour=...` presence. Future multi-tour
+// support may match the value against a tour name.
+
+useEffect(() => {{
+  if (typeof window === 'undefined') return;  // SSR guard
+
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('tour')) return;
+
+  // Overlay gate — don't stack on a welcome modal even when deep-linked.
+  if (!({overlay_gate})) return;
+
+  startSpotlightTour();  // no onDone — permalink doesn't set the flag
+
+  // Clean the URL so a page refresh doesn't loop the trigger.
+  params.delete('tour');
+  const search = params.toString();
+  const cleanUrl = window.location.pathname + (search ? `?${{search}}` : '');
+  window.history.replaceState({{}}, '', cleanUrl);
+}}, [{dep_array}]);
+"""
+
+
+# ---------------------------------------------------------------------------
 # WIRING.md emitter
 # ---------------------------------------------------------------------------
 
@@ -497,9 +574,45 @@ This control is **ungated** — no flag check, no onboarding requirement.
 It fires any time the user wants a replay.
 """
 
+    # Permalink section
+    if main_component:
+        comp_name_for_permalink = main_component.get("name", "your main component")
+        permalink_placement = (
+            f"Place the `permalink` snippet from `snippets[\"permalink\"]` as a sibling "
+            f"`useEffect` alongside the auto-fire effect in `{comp_name_for_permalink}`."
+        )
+    else:
+        permalink_placement = (
+            "Place the `permalink` snippet from `snippets[\"permalink\"]` as a sibling "
+            "`useEffect` alongside the auto-fire effect in your main authenticated "
+            "component."
+        )
+
+    permalink_section = f"""\
+## Step 4 — Add the permalink trigger (optional but recommended)
+
+**What it does:** opens the tour when a `?tour` URL param is present
+(e.g. `https://app.example.com/dashboard?tour=spotlight`). Useful for
+changelog emails, onboarding follow-ups, and "Take the tour" links from
+external surfaces.
+
+{permalink_placement}
+
+Import `startSpotlightTour` from `./spotlightTour` (already imported for the
+auto-fire effect if you placed Step 2). The permalink effect:
+  - Bypasses the `{_SIBLING_FLAG}` flag — the user explicitly opted in via URL.
+  - Still honors overlay-sequencing (won't stack on a welcome modal).
+  - Does NOT set the flag after firing — the link can be reused.
+  - Cleans the URL param after firing so refresh doesn't loop the trigger.
+  - SSR-safe (guards on `typeof window`).
+
+You may skip this step if you don't need URL-based tour entry. The auto-fire
++ replay controls (Steps 2 + 3) are the minimum.
+"""
+
     # Analytics note
     analytics_note = """\
-## Step 4 — Wire analytics (see TOUR_ANALYTICS.md)
+## Step 5 — Wire analytics (see TOUR_ANALYTICS.md)
 
 Open `TOUR_ANALYTICS.md` and replace the `trackTourEvent` stub with your
 analytics provider call. This is the remaining wiring step alongside the
@@ -525,6 +638,7 @@ The plugin has generated exact snippets; your job is to place them.
 {flag_section}
 {effect_section}{overlay_note}
 {replay_section}
+{permalink_section}
 {analytics_note}
 ---
 
