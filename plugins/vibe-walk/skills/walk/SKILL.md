@@ -26,7 +26,9 @@ read discovery.json
             → if REVIEW_NEEDED entries exist → write REVIEW_NEEDED.md → HALT
             → if anchor pass is clean → continue
         → Phase 2, step 2: emit_tour_module.emit_module(build_plan) (M3)
-            → write spotlightSteps.ts + spotlightTour.ts to app tour directory
+            → write spotlightSteps.ts + spotlightTour.ts + spotlight.i18n.json to app tour directory
+            → step copy goes through a t() helper with inline fallbacks;
+              spotlight.i18n.json is the localization swap point
             → surface D1 cap warnings
         → Phase 2, step 3: emit_analytics.emit_analytics(build_plan) (M5)
             → write tourAnalytics.ts + TOUR_ANALYTICS.md to app tour directory
@@ -521,11 +523,12 @@ Resolved:
   Steps:      <N> of <original_count> (D1 cap: 5 max)
 
 Files written:
-  spotlightSteps.ts  — <N>-stop DriveStep[] array, data-tour anchors
-  spotlightTour.ts   — driver() runner, showProgress, SSR guard, replay export
-  tourAnalytics.ts   — 6-event analytics adapter (replace the stub with your provider)
-  TOUR_ANALYTICS.md  — event schema, attribution windows, analytics wiring guide
-  WIRING.md          — trigger wiring guide: flag, auto-fire effect, replay, permalink
+  spotlightSteps.ts    — <N>-stop DriveStep[] array, data-tour anchors, t() helper
+  spotlight.i18n.json  — step copy keyed by spotlight.step.<anchor>.{title,description} (swap to localize)
+  spotlightTour.ts     — driver() runner, showProgress, SSR guard, replay export
+  tourAnalytics.ts     — 6-event analytics adapter (replace the stub with your provider)
+  TOUR_ANALYTICS.md    — event schema, attribution windows, analytics wiring guide
+  WIRING.md            — trigger wiring guide: flag, auto-fire effect, replay, permalink
 
 <if warnings>
 Notes:

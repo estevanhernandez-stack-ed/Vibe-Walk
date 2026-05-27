@@ -662,6 +662,114 @@ class TestPopoverClass:
 
 
 # ---------------------------------------------------------------------------
+# i18n — spotlight.i18n.json sibling + t() helper integration
+# ---------------------------------------------------------------------------
+
+class TestI18n:
+    """
+    The emitter must produce a sibling spotlight.i18n.json keyed by step name,
+    and the spotlightSteps.ts must reference those keys via a t(key, fallback)
+    helper. Removing the JSON does NOT blank the tour — fallbacks remain.
+    """
+
+    def _result(self) -> dict:
+        return emit_module(_build_plan_4_stops())
+
+    def test_emits_i18n_json_file(self):
+        files = self._result()["files"]
+        assert "spotlight.i18n.json" in files, (
+            f"Expected spotlight.i18n.json in files; got {sorted(files.keys())}"
+        )
+        assert files["spotlight.i18n.json"].strip(), "i18n JSON must not be empty"
+
+    def test_i18n_json_is_valid_json_with_expected_schema(self):
+        """Content parses as JSON; keys follow spotlight.step.<anchor>.<field>."""
+        import json
+        files = self._result()["files"]
+        data = json.loads(files["spotlight.i18n.json"])
+        assert isinstance(data, dict), "i18n JSON root must be an object"
+        plan = _build_plan_4_stops()
+        for stop in plan["ranked_shortlist"]:
+            anchor = stop["anchor"]
+            title_key = f"spotlight.step.{anchor}.title"
+            desc_key = f"spotlight.step.{anchor}.description"
+            assert title_key in data, f"i18n JSON missing {title_key!r}"
+            assert desc_key in data, f"i18n JSON missing {desc_key!r}"
+            assert isinstance(data[title_key], str) and data[title_key], (
+                f"i18n value at {title_key!r} must be a non-empty string"
+            )
+            assert isinstance(data[desc_key], str) and data[desc_key], (
+                f"i18n value at {desc_key!r} must be a non-empty string"
+            )
+
+    def test_steps_file_imports_i18n_json_and_uses_t_helper(self):
+        files = self._result()["files"]
+        steps = files["spotlightSteps.ts"]
+        assert "spotlight.i18n.json" in steps, (
+            "spotlightSteps.ts must import the sibling i18n JSON"
+        )
+        assert "function t(" in steps or "const t " in steps or "const t=" in steps, (
+            "spotlightSteps.ts must define a t() helper"
+        )
+        # Every step references t() for both title and description
+        assert "title: t(" in steps, "title fields must go through t() helper"
+        assert "description: t(" in steps, "description fields must go through t() helper"
+
+    def test_steps_file_has_inline_fallbacks(self):
+        """
+        The t() calls must include inline fallback strings so removing
+        spotlight.i18n.json does not blank the tour.
+        """
+        import re
+        files = self._result()["files"]
+        steps = files["spotlightSteps.ts"]
+        # Pattern: t('key', 'non-empty-fallback')
+        title_calls = re.findall(
+            r"title:\s*t\s*\(\s*['\"`][^'\"`]+['\"`]\s*,\s*['\"`]([^'\"`]+)['\"`]", steps
+        )
+        desc_calls = re.findall(
+            r"description:\s*t\s*\(\s*['\"`][^'\"`]+['\"`]\s*,\s*['\"`]([^'\"`]+)['\"`]", steps
+        )
+        plan = _build_plan_4_stops()
+        n = len(plan["ranked_shortlist"])
+        assert len(title_calls) == n, (
+            f"Expected {n} title t() calls with fallbacks; got {len(title_calls)}"
+        )
+        assert len(desc_calls) == n, (
+            f"Expected {n} description t() calls with fallbacks; got {len(desc_calls)}"
+        )
+        for fallback in title_calls + desc_calls:
+            assert fallback.strip(), "All t() fallbacks must be non-empty strings"
+
+    def test_i18n_values_match_inline_fallbacks(self):
+        """
+        Single source of truth: each key's JSON value MUST equal the inline
+        fallback in the steps file. Catches drift between the emitters.
+        """
+        import json, re
+        files = self._result()["files"]
+        data = json.loads(files["spotlight.i18n.json"])
+        steps = files["spotlightSteps.ts"]
+
+        # Extract (key, fallback) pairs from the steps file for both fields
+        for field in ("title", "description"):
+            pattern = (
+                rf"{field}:\s*t\s*\(\s*['\"`]([^'\"`]+)['\"`]\s*,"
+                rf"\s*['\"`]([^'\"`]+)['\"`]"
+            )
+            for key, fallback in re.findall(pattern, steps):
+                # The steps file emits fallbacks with escaped single quotes (\').
+                # The JSON value is unescaped. Normalize before comparing.
+                fallback_normalized = fallback.replace("\\'", "'")
+                assert key in data, f"Key {key!r} from steps file missing in i18n JSON"
+                assert data[key] == fallback_normalized, (
+                    f"Drift between steps file and i18n JSON for {key!r}:\n"
+                    f"  inline fallback: {fallback_normalized!r}\n"
+                    f"  i18n JSON value: {data[key]!r}"
+                )
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -716,10 +824,23 @@ def _count_steps_in_content(content: str) -> int:
 def _extract_descriptions(content: str) -> list:
     """
     Extract description values from a steps file.
-    Handles TypeScript string literals: 'text', "text", `text`.
+
+    Handles two shapes:
+      - i18n shape (current): description: t('spotlight.step.X.description', 'fallback')
+      - legacy direct literal: description: 'fallback'
+
+    Returns the displayed text — the t() fallback when present, otherwise the literal.
     """
     import re
     descriptions = []
-    for match in re.finditer(r"description:\s*['\"`]([^'\"`]{1,300})['\"`]", content):
+    # Current shape: description: t('key', 'fallback')
+    for match in re.finditer(
+        r"description:\s*t\s*\(\s*['\"`][^'\"`]+['\"`]\s*,\s*['\"`]([^'\"`]{1,300})['\"`]",
+        content,
+    ):
         descriptions.append(match.group(1).strip())
+    # Fallback for any legacy direct-literal lines (kept for backward compat)
+    if not descriptions:
+        for match in re.finditer(r"description:\s*['\"`]([^'\"`]{1,300})['\"`]", content):
+            descriptions.append(match.group(1).strip())
     return descriptions

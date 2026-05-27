@@ -9,7 +9,7 @@ Vibe-Walk is a Claude Code plugin (10th in the Vibe family). It reads a host app
 - **Languages:** Python 3.13 (discovery + emitters) and Node.js (jscodeshift codemod + tour-module fixtures).
 - **Tests:** `pytest` (Python, 174+ tests under `tests/`) and `jest` (JS, 23+ tests under `plugins/vibe-walk/scripts/anchors/__tests__/` — `testMatch: **/__tests__/**/*.test.js`, intentionally narrow so `.jsx` fixtures aren't collected as suites).
 - **Plugin substrate:** Markdown SKILLs under `plugins/vibe-walk/skills/`, manifest at `plugins/vibe-walk/.claude-plugin/plugin.json`, scripts under `plugins/vibe-walk/scripts/`.
-- **Emitted tour stack:** Driver.js (default substrate, MIT) → TypeScript module (`spotlightSteps.ts` + `spotlightTour.ts`). Override substrates: React Joyride, Reactour, NextStep.js. **Intro.js is never an option** (AGPL-3 license poison for host apps).
+- **Emitted tour stack:** Driver.js (default substrate, MIT) → TypeScript module (`spotlightSteps.ts` + `spotlightTour.ts` + `spotlight.i18n.json` sibling for step copy, swap to localize). Override substrates: React Joyride, Reactour, NextStep.js. **Intro.js is never an option** (AGPL-3 license poison for host apps).
 - **Distribution:** Canary via this solo repo, stable via [`estevanhernandez-stack-ed/vibe-plugins`](https://github.com/estevanhernandez-stack-ed/vibe-plugins) marketplace.
 
 ## What's where
