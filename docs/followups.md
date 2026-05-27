@@ -4,7 +4,7 @@ Append-only list of work carried out of a session but not yet shipped. Each item
 
 ---
 
-## 1. Soften the walk-SKILL hard gate to confirm-then-proceed
+## 1. ~~Soften the walk-SKILL hard gate to confirm-then-proceed~~ — shipped 2026-05-27 in [PR #1](https://github.com/estevanhernandez-stack-ed/Vibe-Walk/pull/1)
 
 **Where:** `plugins/vibe-walk/skills/walk/SKILL.md` — around line 47, the "Prerequisites" section.
 
