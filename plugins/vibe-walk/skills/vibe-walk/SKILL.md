@@ -25,7 +25,7 @@ The agent's job:
 
 - **Never auto-fire a build.** Always confirm before invoking discover or walk.
 - **Read-only by default.** The router writes nothing. (Bootstrap, invoked from here on first run, writes config after the user confirms.)
-- **Respect the verdict.** If discovery already returned a "don't build a tour" verdict, surface it — do not nudge toward building anyway.
+- **Respect the verdict, surface the override.** If discovery returned a `don't-build` or `cheaper-first` verdict, surface it and its reasons — don't nudge toward building. But name that `/vibe-walk:walk` will accept an override (surface + confirm-once) when the builder has context the plugin lacks. The verdict is advisory, not a refusal.
 
 ## Routing logic
 
@@ -33,7 +33,7 @@ The agent's job:
 |---|---|
 | `.vibe-walk/config.json` absent | First-run path → invoke **bootstrap** |
 | Config present, no `.vibe-walk/discovery.json` | **/vibe-walk:discover** — read the app's surfaces and get the verdict |
-| Discovery present, verdict = `don't-build` or `cheaper-first` | Surface the verdict + its rationale. Do NOT recommend building. Offer `/vibe-walk:discover --refresh` if the app has changed. |
+| Discovery present, verdict = `don't-build` or `cheaper-first` | Surface the verdict + its rationale. Do NOT recommend building. Offer `/vibe-walk:discover --refresh` if the app has changed. Mention that `/vibe-walk:walk` will accept an override (surface + ask once) if the builder has context the plugin lacks. |
 | Discovery present, verdict = `build` | **/vibe-walk:walk** — run the interview gates and build the tour |
 
 ## First-run path (graceful)
