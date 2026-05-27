@@ -1,18 +1,19 @@
 {
   "category": "Claude Code plugin (Python + Node) — generates instrumented Driver.js spotlight tours with an advisory tour-readiness discovery pass.",
   "competitors": [
-    "https://www.pendo.io/resources/release-notes/",
-    "https://www.chameleon.io/changelog",
-    "https://whatfix.com/blog/category/product-update/",
-    "https://www.appcues.com/changelog",
-    "https://scribehow.com/blog",
-    "https://www.tango.us",
-    "https://supademo.com/changelog"
+    "https://new.pendo.io/",
+    "https://www.chameleon.io/whats-new",
+    "https://support.whatfix.com/docs/en/whatfix-release-notes",
+    "https://feedback.appcues.com/changelog",
+    "https://scribe.launchnotes.io/",
+    "https://updates.tango.ai/",
+    "https://supademo.com/blog/changelog/",
+    "https://userpilot.com/blog/tag/product-update-notes/"
   ],
   "framework_pins": [
     { "name": "jscodeshift", "version": "^17.3.0" },
     { "name": "jest", "version": "^29.7.0" },
     { "name": "jest-environment-node", "version": "^29.7.0" }
   ],
-  "last_inferred_at": "2026-05-26T21:35:00Z"
+  "last_inferred_at": "2026-05-27T17:35:33Z"
 }

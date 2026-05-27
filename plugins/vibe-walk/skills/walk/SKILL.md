@@ -490,10 +490,12 @@ for rel_path, contents in wiring_result["files"].items():
 ```
 Trigger wiring: WIRING.md written to <app_path>/src/components/tour/WIRING.md.
 
-The plugin has generated exact snippets for the three trigger wiring steps:
+The plugin has generated exact snippets for the four trigger wiring steps:
   1. Flag addition — extend <flag_file> with hasSeenSpotlight (sibling to <existing_flag>).
   2. Auto-fire effect — place the useEffect in <main_component> (<comp_file>).
   3. Replay control — add the "Take the Tour" button to your help menu or nav.
+  4. Permalink trigger (optional) — sibling useEffect that opens the tour on
+     ?tour URL params for changelog emails / external "Take the tour" links.
 
 Open WIRING.md for exact placement instructions and the snippets to apply.
 This is the one remaining human step — the plugin cannot safely auto-edit
@@ -523,17 +525,18 @@ Files written:
   spotlightTour.ts   — driver() runner, showProgress, SSR guard, replay export
   tourAnalytics.ts   — 6-event analytics adapter (replace the stub with your provider)
   TOUR_ANALYTICS.md  — event schema, attribution windows, analytics wiring guide
-  WIRING.md          — trigger wiring guide: flag, auto-fire effect, replay placement
+  WIRING.md          — trigger wiring guide: flag, auto-fire effect, replay, permalink
 
 <if warnings>
 Notes:
   <warnings listed here>
 </if>
 
-Next: open WIRING.md and follow the three steps to complete trigger wiring:
+Next: open WIRING.md and follow the four steps to complete trigger wiring:
   1. Add hasSeenSpotlight to <flag_file> (sibling to your existing flags).
   2. Place the auto-fire useEffect in <main_component> (<comp_file>).
   3. Add the "Take the Tour" replay button to your help menu or nav.
+  4. (Optional) Add the permalink useEffect for ?tour URL-based deep-links.
 
 Also open TOUR_ANALYTICS.md and replace the trackTourEvent stub with your
 analytics provider call.
