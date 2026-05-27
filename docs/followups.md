@@ -29,7 +29,7 @@ That is a **hard gate** — the SKILL refuses to proceed unless discovery return
 
 ---
 
-## 2. Create the 626Labs Dashboard project for Vibe-Walk
+## 2. ~~Create the 626Labs Dashboard project for Vibe-Walk~~ — shipped 2026-05-27, project ID `nGhNenQOaYmTyv6rkr3z`
 
 **Where:** 626Labs Dashboard, via `mcp__626labs__manage_projects` action `create`.
 
