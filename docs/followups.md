@@ -144,6 +144,31 @@ Then `linkRepo` with `repoUrl: https://github.com/estevanhernandez-stack-ed/Vibe
 
 ---
 
+## 6. `npm audit fix` — resolve `tmp` Path Traversal (transitive dev dep)
+
+**Where:** `package-lock.json` (transitive resolution; primary surface is `npm audit fix`)
+
+**Source:** surfaced by `npm install` during the Jest 30 bump (PR #8) — `npm audit` flags 1 high-severity vulnerability in `tmp` ([GHSA-ph9p-34f9-6g65](https://github.com/advisories/GHSA-ph9p-34f9-6g65) — Path Traversal via unsanitized prefix/postfix). **Pre-existing**, not introduced by the Jest 30 bump (verified via dev-only audit scope). Likely pulled in transitively by `jscodeshift` or one of jest's own deps.
+
+**Why:** high-severity flag should not linger, even in a dev-only chain. The fix is available via the standard `npm audit fix` recipe — no major bumps required. Letting it sit invites a `Dependabot`-style nag and clutters future `npm install` output.
+
+**Concrete next move:**
+
+1. Branch `chore/npm-audit-fix-tmp`.
+2. Run `npm audit fix` — confirms no major version bumps. If it would do anything destructive, stop and re-evaluate.
+3. Verify lockfile diff is scoped (only `tmp` + any tiny intermediate bumps).
+4. `npm test` → expect 228/228 green.
+5. If `npm audit` still reports issues after the fix, document the residual in the PR body; don't escalate to `--force`.
+6. Ship as a single `chore(deps)` PR. Light flow.
+
+**Posture notes:** transitive dev-dep — does not ship to host apps. Path Traversal in `tmp` is a real CVE class but the exposure here is constrained to local test runs (anyone running our test suite with a malicious `tmp` prefix arg, which doesn't happen in normal use). Worth fixing on hygiene grounds, not panic grounds.
+
+**Cart-detection:** light flow — single command, single file changed (lockfile), tests as the verification gate.
+
+**Recommended ship order:** independent — not part of the three-feature plan. Ship when convenient; doesn't block anything.
+
+---
+
 ## Planning notes (not items themselves)
 
 - All three were selected by `/vibe-iterate:rate` against the atlas runners-up from PR #2's `/vibe-iterate:competitive` run. The full match/differentiate/decline diff lives in `.vibe-iterate/atlas.jsonl` for the PR #2 entry (`rejected_runners_up` array).
