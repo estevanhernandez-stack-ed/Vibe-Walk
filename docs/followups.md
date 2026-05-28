@@ -57,7 +57,7 @@ Then `linkRepo` with `repoUrl: https://github.com/estevanhernandez-stack-ed/Vibe
 
 ---
 
-## 3. Tour i18n — emit step copy as a separate `spotlight.i18n.json`
+## 3. ~~Tour i18n — emit step copy as a separate `spotlight.i18n.json`~~ — shipped 2026-05-27 in [PR #4](https://github.com/estevanhernandez-stack-ed/Vibe-Walk/pull/4)
 
 **Where:** `plugins/vibe-walk/scripts/build/emit_tour_module.py`
 
