@@ -1,13 +1,13 @@
 ---
 name: vitals
-description: "This skill should be used when the user says `/vibe-walk:vitals` or wants a structural integrity check on the vibe-walk install. Runs read-only structural checks and reports findings in a banner-style report. Implements Pattern #8 (Plugin Self-Test) from the Self-Evolving Plugin Framework. Read-only — no auto-fix in v0.0.1."
+description: "This skill should be used when the user says `/vibe-walk:vitals` or wants a structural integrity check on the vibe-walk install. Runs read-only structural checks and reports findings in a banner-style report. Implements Pattern #8 (Plugin Self-Test) from the Self-Evolving Plugin Framework. When run from a host repo where `/vibe-walk:walk` has emitted a tour, also detects anchor drift between `spotlightSteps.ts` and host source. Read-only — no auto-fix."
 ---
 
 # /vibe-walk:vitals — structural self-test
 
 Slash command `/vibe-walk:vitals`. Runs **read-only** structural checks against the installed plugin files, reports findings in a banner-style report with per-check status (✓ pass, ⚠ warn, ✗ fail), and prints a summary line. No writes, no auto-fix in this release.
 
-This is Pattern #8 (Plugin Self-Test) from the Self-Evolving Plugin Framework. Vitals surfaces drift between files before that drift silently breaks a command mid-flow.
+This is Pattern #8 (Plugin Self-Test) from the Self-Evolving Plugin Framework. Vitals surfaces drift between files before that drift silently breaks a command mid-flow. When the working directory is a host repo where `/vibe-walk:walk` has emitted a tour, an additional check audits the host's `spotlightSteps.ts` anchors against the host source — a build-time drift detector that competing runtime tools cannot ship because they have no emitted tour module to diff against.
 
 ## Before You Start
 
@@ -35,7 +35,7 @@ Vitals does **not** call `friction-logger.log()`. Running a structural self-test
 One-sentence opening before the report renders:
 
 ```
-Running structural sweep — checking plugin.json, all nine SKILLs, scripts, guide references, and friction-trigger wiring.
+Running structural sweep — checking plugin.json, all nine SKILLs, scripts, guide references, friction-trigger wiring, and (when run from a host repo) emitted-tour anchor drift.
 ```
 
 Then render the report. No narration between checks.
@@ -53,7 +53,9 @@ All paths vitals reads (never writes):
 | Discovery scripts | `plugins/vibe-walk/scripts/discovery/inventory_surfaces.py`, `anchor_readiness.py`, `build_verdict.py` |
 | Build scripts | `plugins/vibe-walk/scripts/build/emit_tour_module.py`, `emit_analytics.py`, `substrate_tree.py` |
 | Anchor codemod | `plugins/vibe-walk/scripts/anchors/inject_anchors.js` |
+| Diagnostic scripts | `plugins/vibe-walk/scripts/diagnostics/anchor_drift.py` |
 | Friction triggers doc | `plugins/vibe-walk/skills/guide/references/friction-triggers.md` |
+| Host build-plan (drift check, optional) | `<host-repo>/.vibe-walk/build-plan.json` (used to locate the host app path; absent when running from the plugin repo) |
 
 If any path is unreadable for reasons other than "does not exist" (permission denied, I/O error), the affected check reports `✗ fail` with the error surfaced verbatim.
 
@@ -61,7 +63,7 @@ If any path is unreadable for reasons other than "does not exist" (permission de
 
 1. Write the persona-adapted opening line.
 2. Read `plugin.json` version field. Fall back to `"unknown"` on parse failure. Capture local ISO datetime for the banner.
-3. Run checks #1 through #7 in order. A failure in one check never aborts the next — the report always includes all seven sections.
+3. Run checks #1 through #8 in order. A failure in one check never aborts the next — the report always includes all eight sections.
 4. Render the report (banner + per-check boxes + summary line).
 5. Print the closing advisory.
 6. Call `session-logger.end()`.
@@ -202,6 +204,34 @@ For each present section, confirm it contains at least one friction trigger row 
 
 ---
 
+### Check #8 — Host tour anchor drift (build-time)
+
+**Purpose:** when running from a host repo where `/vibe-walk:walk` has emitted a tour, audit the host's `spotlightSteps.ts` anchors against the host source. Reports drift between emitted step selectors and live `data-tour=` attributes — surfaces the build-time class of brittleness that runtime-DOM tools cannot detect.
+
+This is the **differentiator extension** check. It is structurally inapplicable to vendor runtime tools (Chameleon's Ranger, Pendo's auto-tagging, etc.) because they have no emitted tour module to diff against. When run from the plugin repo itself (no host context), this check is a clean N/A.
+
+**(a) Read.**
+1. Look for `.vibe-walk/build-plan.json` in the **current working directory** (the host repo's root, typical for a `/vibe-walk:vitals` invocation after a tour build).
+2. If not present, mark the check as N/A and skip the drift detection — no host context.
+3. If present, parse it to extract `app_path` (the absolute path to the host application root). Locate the tour directory (default search: `src/components/tour`, `src/tour`, `tour`, `components/tour`).
+4. Invoke `diagnostics.anchor_drift.detect(app_path)`.
+
+**(b) Evaluate.** Read `result["status"]`:
+- `"clean"` → no drift. Note `steps_anchors` count + `source_anchors` count.
+- `"drift"` → there is drift. Capture `missing[]` and `orphan[]` lists with file/line.
+- `"no-tour"` → host context exists but `spotlightSteps.ts` wasn't found. The builder may not have completed Phase 2 yet, or the tour dir is in an unexpected location.
+- `"no-source"` → tour exists but no source files were scanned. Host source layout is unusual.
+
+**(c) Report.**
+- ✓ pass: status is `"clean"` OR no host context. For clean: `<N> step anchors, <M> source occurrences, no drift detected`. For N/A: `No host app context — drift check N/A (run from a repo where /vibe-walk:walk emitted a tour)`.
+- ⚠ warn: status is `"drift"`. Render: `<K> drift items (missing: <X>, orphan: <Y>)`. Below the box, list each missing anchor and each orphan with `file:line`.
+- ⚠ warn: status is `"no-tour"` or `"no-source"`. Surface the issue verbatim so the builder knows whether to re-run `/vibe-walk:walk` or check their tour-dir location.
+- ✗ fail: `anchor_drift.detect()` raised an exception. Surface the error verbatim.
+
+**(d) Fail-soft.** Any I/O error reading `.vibe-walk/build-plan.json` → mark as N/A (treat the file as absent rather than erroring the whole check). A corrupt `build-plan.json` (parse failure) → ⚠ warn with the parse error.
+
+---
+
 ## Output Format
 
 ### Banner header
@@ -246,7 +276,7 @@ After the last check box, one blank line, then:
   <N> ✓  ·  <N> ⚠  ·  <N> ✗
 ```
 
-Indented two spaces. The three counts sum to 7.
+Indented two spaces. The three counts sum to 8.
 
 ### Closing advisory
 
@@ -256,13 +286,13 @@ Re-run /vibe-walk:vitals any time to re-check. For structural proposals, see /vi
 
 ## Expected output on a clean install
 
-A fully-shipped v0.0.1 install should produce `7 ✓  ·  0 ⚠  ·  0 ✗`.
+A fully-shipped install should produce `8 ✓  ·  0 ⚠  ·  0 ✗` (Check #8 is ✓ N/A when run from the plugin repo with no host context, or ✓ clean when run from a host repo with a freshly emitted tour).
 
 The first run before a dogfood session is the natural time to run this. If anything's missing or drifted, the check output names exactly what to fix before the session starts.
 
 ## Why this exists
 
-vibe-walk has nine SKILLs, six scripts, and four guide-reference files that cross-reference each other. Without an on-demand diagnostic, a missing script or a deleted reference file surfaces as a cryptic error mid-build at the worst possible moment. `/vitals` makes the structural state visible in one pass — cheap to run, hard to misread.
+vibe-walk has nine SKILLs, seven scripts, and four guide-reference files that cross-reference each other. Without an on-demand diagnostic, a missing script or a deleted reference file surfaces as a cryptic error mid-build at the worst possible moment. `/vitals` makes the structural state visible in one pass — cheap to run, hard to misread. Check #8 extends that posture to the host's emitted tour: build-time drift detection that vendors running purely at runtime cannot match.
 
 ## Cross-references
 
@@ -271,3 +301,4 @@ vibe-walk has nine SKILLs, six scripts, and four guide-reference files that cros
 - Friction logger: [`../friction-logger/SKILL.md`](../friction-logger/SKILL.md)
 - Self-evolution: [`../evolve-walk/SKILL.md`](../evolve-walk/SKILL.md)
 - Friction triggers: [`../guide/references/friction-triggers.md`](../guide/references/friction-triggers.md)
+- Anchor drift detector: `../../scripts/diagnostics/anchor_drift.py` (invoked by Check #8)
