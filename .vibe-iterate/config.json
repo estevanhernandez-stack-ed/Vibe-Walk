@@ -12,8 +12,8 @@
   ],
   "framework_pins": [
     { "name": "jscodeshift", "version": "^17.3.0" },
-    { "name": "jest", "version": "^29.7.0" },
-    { "name": "jest-environment-node", "version": "^29.7.0" }
+    { "name": "jest", "version": "^30.0.0" },
+    { "name": "jest-environment-node", "version": "^30.0.0" }
   ],
   "last_inferred_at": "2026-05-27T17:35:33Z"
 }
