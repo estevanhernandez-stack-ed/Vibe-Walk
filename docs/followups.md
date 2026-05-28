@@ -88,7 +88,7 @@ Then `linkRepo` with `repoUrl: https://github.com/estevanhernandez-stack-ed/Vibe
 
 ---
 
-## 4. Drift-aware tour audit — extend `/vibe-walk:vitals` with anchor-vs-source mismatch detection
+## 4. ~~Drift-aware tour audit — extend `/vibe-walk:vitals` with anchor-vs-source mismatch detection~~ — shipped 2026-05-27 in [PR #6](https://github.com/estevanhernandez-stack-ed/Vibe-Walk/pull/6)
 
 **Where:** new module `plugins/vibe-walk/scripts/diagnostics/anchor_drift.py` + wire into `plugins/vibe-walk/skills/vitals/SKILL.md`
 
