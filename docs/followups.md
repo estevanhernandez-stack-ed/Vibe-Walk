@@ -115,7 +115,7 @@ Then `linkRepo` with `repoUrl: https://github.com/estevanhernandez-stack-ed/Vibe
 
 ---
 
-## 5. Jest 30 bump — surgical dependency upgrade
+## 5. ~~Jest 30 bump — surgical dependency upgrade~~ — shipped 2026-05-28 in [PR #8](https://github.com/estevanhernandez-stack-ed/Vibe-Walk/pull/8) (jest 29.7.0 → 30.4.2, zero source changes)
 
 **Where:** `package.json` (jest + jest-environment-node), possibly `tests/` if the codemod modifies syntax.
 
