@@ -144,7 +144,7 @@ Then `linkRepo` with `repoUrl: https://github.com/estevanhernandez-stack-ed/Vibe
 
 ---
 
-## 6. `npm audit fix` — resolve `tmp` Path Traversal (transitive dev dep)
+## 6. ~~`npm audit fix` — resolve `tmp` Path Traversal (transitive dev dep)~~ — shipped 2026-06-09 in commit [8a21ec6](https://github.com/estevanhernandez-stack-ed/Vibe-Walk/commit/8a21ec636777fd0775773c097906d563d9edf709) (tmp 0.2.5 → 0.2.7, lockfile-only, 228/228 green)
 
 **Where:** `package-lock.json` (transitive resolution; primary surface is `npm audit fix`)
 
