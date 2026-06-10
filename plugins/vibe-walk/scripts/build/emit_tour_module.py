@@ -499,7 +499,7 @@ def _derive_app_slug(app_path: str) -> str:
     """
     Derive a kebab-case app slug from the app_path for use in class names.
     '/projects/my-cool-app' → 'my-cool-app'
-    '/Users/estev/Projects/Celestia3' → 'celestia3'
+    '/path/to/Celestia3' → 'celestia3'
     """
     name = Path(app_path).name if app_path else "app"
     # Lower-case + kebab
