@@ -434,6 +434,20 @@ for rel_path, contents in result["files"].items():
 
 Surface any D1 cap warnings to the builder before moving to step 3.
 
+**A11y assertions (emit-time gate).** Immediately after writing the emitted files, run the keyboard/AT contract check over them:
+
+```python
+from diagnostics.a11y_assertions import check
+a11y = check(app_path)
+
+for f in a11y["findings"]:
+    print(f"  [{f['severity']}] {f['id']} — {f['message']}")
+```
+
+- **`fail`-level findings** (`keyboard-control-disabled`, `escape-hatch-removed`, `close-button-removed`) mean the emitted tour is keyboard-inaccessible — fix the emitted files and re-run before moving to step 3. Never hand off a tour carrying a fail-level a11y finding.
+- **`warn`-level findings** (`focus-return-missing`, `destroy-hook-missing`, `step-copy-missing`, `nav-buttons-missing`) are advisory — surface them verbatim in the hand-off message.
+- A freshly emitted module passes by construction; this gate exists to catch emitter regressions and post-emit hand edits. It's a script, not a checklist, on purpose — prose-only enforcement rots.
+
 #### Step 3 — Wire analytics (M5)
 
 ```python

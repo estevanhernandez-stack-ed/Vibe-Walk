@@ -20,7 +20,7 @@ Emits three files for the Driver.js / Shape A (drop-in module) path:
       - popoverClass (derived from app name)
       - showProgress: true (progress indicator, +12% completion, cheap to ship)
       - showButtons: ['next', 'previous', 'close']
-      - onDestroyed → onDone callback
+      - onDestroyed → focus return (a11y) + onDone callback
       - startSpotlightTour(onDone?) export (primary call surface)
       - replaySpotlightTour export (persistent, ungated replay entry point)
       - SSR guard (typeof window check — driver.js is browser-only)
@@ -274,6 +274,8 @@ def _emit_runner_file(app_slug: str, stops: list[dict]) -> str:
     Matches the Celestia3 calibre:
       - import driver from driver.js
       - driver({showProgress, showButtons, popoverClass, steps, onDestroyed}) .drive()
+      - a11y focus return — capture document.activeElement before drive(),
+        restore it in onDestroyed so closing the tour hands focus back
       - startSpotlightTour(onDone?) export — the primary call surface
       - replaySpotlightTour export — persistent, ungated replay entry point
       - SSR guard (typeof window check) — driver.js is browser-only
@@ -305,12 +307,19 @@ export function startSpotlightTour(onDone?: () => void): void {{
   // SSR guard — driver.js requires a browser DOM; bail out on SSR/SSG renders.
   if (typeof window === 'undefined') return;
 
+  // a11y — remember where keyboard focus was so it can be handed back when
+  // the tour closes. Without this, focus strands on document.body and
+  // keyboard / screen-reader users restart navigation from the top.
+  const previouslyFocused =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
   const tour = driver({{
     showProgress: true,
     showButtons: ['next', 'previous', 'close'],
     popoverClass: '{popover_class}',
     steps: SPOTLIGHT_STEPS,
     onDestroyed: () => {{
+      previouslyFocused?.focus();
       onDone?.();
     }},
   }});

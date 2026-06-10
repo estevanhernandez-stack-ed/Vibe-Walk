@@ -63,7 +63,7 @@ If any path is unreadable for reasons other than "does not exist" (permission de
 
 1. Write the persona-adapted opening line.
 2. Read `plugin.json` version field. Fall back to `"unknown"` on parse failure. Capture local ISO datetime for the banner.
-3. Run checks #1 through #8 in order. A failure in one check never aborts the next — the report always includes all eight sections.
+3. Run checks #1 through #9 in order. A failure in one check never aborts the next — the report always includes all nine sections.
 4. Render the report (banner + per-check boxes + summary line).
 5. Print the closing advisory.
 6. Call `session-logger.end()`.
@@ -232,6 +232,30 @@ This is the **differentiator extension** check. It is structurally inapplicable 
 
 ---
 
+### Check #9 — Host tour a11y assertions (emit-time)
+
+**Purpose:** when a host tour exists, assert the emitted tour module still honors the keyboard/AT contract it shipped with — keyboard control enabled, escape hatch intact (ESC + close button), focus handed back on destroy, per-step popover copy present. Hosts edit emitted files; an edit that strands keyboard or screen-reader users shows no breakage for mouse users, so nothing else would surface it. The tour runs in front of brand-new users — the highest-stakes a11y surface the host has.
+
+**(a) Read.**
+1. Reuse Check #8's host-context detection (`.vibe-walk/build-plan.json` in the current working directory → `app_path`). No host context → N/A.
+2. Invoke `diagnostics.a11y_assertions.check(app_path)`.
+
+**(b) Evaluate.** Read `result["status"]`:
+- `"pass"` → every assertion holds. Note `len(result["checked"])`.
+- `"findings"` → inspect `findings[]`; each entry carries `severity` (`fail` / `warn`), `id`, `message`.
+- `"no-tour"` → host context exists but no `spotlightTour.ts` was found.
+
+**(c) Report.**
+- ✓ pass: `keyboard/AT contract intact (<N> assertions)`. For N/A: `No host app context — a11y check N/A (run from a repo where /vibe-walk:walk emitted a tour)`.
+- ✗ fail: any fail-level finding (`keyboard-control-disabled`, `escape-hatch-removed`, `close-button-removed`) — the live tour is keyboard-inaccessible for someone. List fail-level findings first, `id — message`.
+- ⚠ warn: only warn-level findings (`focus-return-missing`, `destroy-hook-missing`, `nav-buttons-missing`, `step-copy-missing`). List each `id — message`. `focus-return-missing` on a pre-v0.3 emission means: re-emit with the current emitter to pick up focus return.
+- ⚠ warn: status is `"no-tour"` — same guidance as Check #8's no-tour branch.
+- ✗ fail: `a11y_assertions.check()` raised an exception. Surface the error verbatim.
+
+**(d) Fail-soft.** Same as Check #8: unreadable `build-plan.json` → N/A; corrupt → ⚠ warn with the parse error.
+
+---
+
 ## Output Format
 
 ### Banner header
@@ -276,7 +300,7 @@ After the last check box, one blank line, then:
   <N> ✓  ·  <N> ⚠  ·  <N> ✗
 ```
 
-Indented two spaces. The three counts sum to 8.
+Indented two spaces. The three counts sum to 9.
 
 ### Closing advisory
 
@@ -286,13 +310,13 @@ Re-run /vibe-walk:vitals any time to re-check. For structural proposals, see /vi
 
 ## Expected output on a clean install
 
-A fully-shipped install should produce `8 ✓  ·  0 ⚠  ·  0 ✗` (Check #8 is ✓ N/A when run from the plugin repo with no host context, or ✓ clean when run from a host repo with a freshly emitted tour).
+A fully-shipped install should produce `9 ✓  ·  0 ⚠  ·  0 ✗` (Checks #8 and #9 are ✓ N/A when run from the plugin repo with no host context, or ✓ clean when run from a host repo with a freshly emitted tour).
 
 The first run before a dogfood session is the natural time to run this. If anything's missing or drifted, the check output names exactly what to fix before the session starts.
 
 ## Why this exists
 
-vibe-walk has nine SKILLs, seven scripts, and four guide-reference files that cross-reference each other. Without an on-demand diagnostic, a missing script or a deleted reference file surfaces as a cryptic error mid-build at the worst possible moment. `/vitals` makes the structural state visible in one pass — cheap to run, hard to misread. Check #8 extends that posture to the host's emitted tour: build-time drift detection that vendors running purely at runtime cannot match.
+vibe-walk has nine SKILLs, eight scripts, and four guide-reference files that cross-reference each other. Without an on-demand diagnostic, a missing script or a deleted reference file surfaces as a cryptic error mid-build at the worst possible moment. `/vitals` makes the structural state visible in one pass — cheap to run, hard to misread. Checks #8 and #9 extend that posture to the host's emitted tour: build-time anchor-drift detection and keyboard/AT contract assertions that vendors running purely at runtime cannot match.
 
 ## Cross-references
 
