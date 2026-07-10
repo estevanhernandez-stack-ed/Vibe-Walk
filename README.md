@@ -1,4 +1,5 @@
 <p align="center">
+  <img src="assets/brand/icon.svg" width="120" alt="vibe-walk mark">
   <img alt="Vibe Walk — earn the tour first, then generate an instrumented spotlight walkthrough" src="https://626labs.dev/assets/brand/plugins/vibe-walk-banner-1500x500.png" />
 </p>
 
